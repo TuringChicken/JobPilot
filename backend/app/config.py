@@ -14,14 +14,9 @@ class Settings(BaseSettings):
     api_key: SecretStr
     database_url: str = "sqlite:///./data/jobpilot.db"
 
-    llm_provider: Literal["ollama", "azure"] = "ollama"
-    llm_timeout_seconds: float = 300.0
-    # None = model default. "none" disables thinking on Ollama reasoning models (faster,
-    # but noticeably more prone to following instructions embedded in the input).
+    llm_timeout_seconds: float = 120.0
+    # None = model default. Only reasoning-model deployments accept this parameter.
     llm_reasoning_effort: Literal["none", "low", "medium", "high"] | None = None
-
-    ollama_base_url: str = "http://localhost:11434/v1"
-    ollama_model: str = "qwen3:8b"
 
     azure_openai_endpoint: str = ""
     azure_openai_api_key: SecretStr = SecretStr("")

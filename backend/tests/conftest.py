@@ -40,9 +40,8 @@ def settings(tmp_path) -> Settings:
     return Settings(
         _env_file=None,
         api_key=API_KEY,
+        # No Azure credentials => no real LLM client; tests inject a fake parser.
         database_url=f"sqlite:///{tmp_path / 'test.db'}",
-        # Azure without credentials => no real LLM client; tests inject a fake parser.
-        llm_provider="azure",
         max_resume_bytes=200_000,
     )
 

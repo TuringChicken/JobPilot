@@ -15,7 +15,7 @@ class LLMError(RuntimeError):
 
 @dataclass(frozen=True)
 class StructuredLLM:
-    """Structured-output chat calls over any OpenAI-compatible endpoint (Ollama, Azure v1)."""
+    """Structured-output chat calls against the Azure OpenAI v1 (OpenAI-compatible) API."""
 
     client: OpenAI
     model: str
@@ -45,16 +45,7 @@ class StructuredLLM:
 
 
 def build_llm(settings: Settings) -> StructuredLLM | None:
-    """Return the configured LLM, or None if the selected provider lacks credentials."""
-    if settings.llm_provider == "ollama":
-        # Ollama ignores the API key, but the SDK requires a non-empty one.
-        client = OpenAI(
-            base_url=settings.ollama_base_url,
-            api_key="ollama",
-            timeout=settings.llm_timeout_seconds,
-        )
-        return StructuredLLM(client, settings.ollama_model, settings.llm_reasoning_effort)
-
+    """Return the configured LLM, or None if Azure OpenAI credentials are missing."""
     api_key = settings.azure_openai_api_key.get_secret_value()
     if not (settings.azure_openai_endpoint and api_key and settings.azure_openai_chat_deployment):
         return None

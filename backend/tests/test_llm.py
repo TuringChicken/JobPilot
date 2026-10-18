@@ -60,21 +60,13 @@ def test_parse_rejects_missing_output():
         llm.parse("sys", "user", Answer)
 
 
-def test_build_llm_defaults_to_local_ollama():
-    llm = build_llm(make_settings())
-    assert llm is not None
-    assert llm.model == "qwen3:8b"
-    assert str(llm.client.base_url).startswith("http://localhost:11434/v1")
+def test_build_llm_requires_credentials():
+    assert build_llm(make_settings()) is None
 
 
-def test_build_llm_azure_requires_credentials():
-    assert build_llm(make_settings(llm_provider="azure")) is None
-
-
-def test_build_llm_azure_uses_deployment_name():
+def test_build_llm_uses_azure_deployment_name():
     llm = build_llm(
         make_settings(
-            llm_provider="azure",
             azure_openai_endpoint="https://res.openai.azure.com/openai/v1/",
             azure_openai_api_key="secret",
             azure_openai_chat_deployment="gpt-deploy",

@@ -20,21 +20,9 @@ copy .env.example .env      # then set API_KEY and Azure OpenAI values
 alembic upgrade head        # creates data/jobpilot.db
 ```
 
-## LLM provider
+## LLM
 
-Default is local [Ollama](https://ollama.com) (`LLM_PROVIDER=ollama`, model `qwen3:8b`):
-
-```powershell
-ollama pull qwen3:8b
-```
-
-Ollama's default 4096-token context is too small for resume + reasoning. Raise it (then restart Ollama):
-
-```powershell
-setx OLLAMA_CONTEXT_LENGTH 8192
-```
-
-To use Azure OpenAI instead, set `LLM_PROVIDER=azure` and the `AZURE_OPENAI_*` values in `.env`.
+Azure OpenAI via the v1 API. Set `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_CHAT_DEPLOYMENT` (the deployment name, not the model name) in `.env`. Without them, resume upload returns 503.
 
 ## Run the backend
 

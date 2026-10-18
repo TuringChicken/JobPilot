@@ -7,6 +7,6 @@
 - Never commit real resumes or personal data; use synthetic sample CVs for tests.
 - Current focus: Phase 1 MVP (single job page + CV → match report).
 - Python 3.13. Backend lives in `backend/app` (FastAPI app factory `app.main:create_app`); tests in `backend/tests`, run `pytest` from repo root.
-- LLM: `app/services/llm.py` `StructuredLLM` wraps any OpenAI-compatible endpoint via `chat.completions.parse`. `LLM_PROVIDER=ollama` (default, local `qwen3:8b`) or `azure`. New LLM features should reuse `StructuredLLM.parse`, not create their own clients.
-- Tests must never call a real LLM (Ollama or Azure): conftest uses `llm_provider="azure"` without credentials and injects fakes.
+- LLM: Azure OpenAI only (v1 API). `app/services/llm.py` `StructuredLLM` wraps it via `chat.completions.parse`; new LLM features should reuse `StructuredLLM.parse`, not create their own clients.
+- Tests must never call the real Azure OpenAI API: conftest builds settings without Azure credentials and injects fakes.
 - Schema changes go through Alembic migrations (`backend/alembic`), not `create_all`.
