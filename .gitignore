@@ -31,6 +31,8 @@ build/
 *.docx
 uploads/
 data/private/
+*.db
+*.sqlite3
 
 # IDE / OS
 .vscode/

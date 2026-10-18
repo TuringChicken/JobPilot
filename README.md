@@ -6,18 +6,36 @@ See [JobPilot_AI_Project_Outline.md](JobPilot_AI_Project_Outline.md) for the ful
 
 ## Status
 
-Phase 1 (MVP): single job page + one CV → AI match report. Not started.
+Phase 1 (MVP): single job page + one CV → AI match report. Backend skeleton with resume upload/parsing is in place.
 
 ## Setup on a new machine
 
 ```powershell
-git clone https://github.com/<your-username>/JobPilot.git
+git clone https://github.com/TuringChicken/JobPilot.git
 cd JobPilot
-python -m venv .venv
+py -3.13 -m venv .venv
 .\.venv\Scripts\Activate.ps1
-# pip install -r requirements.txt   (once the backend exists)
-# copy .env.example .env            (then fill in secrets locally)
+pip install -r requirements-dev.txt
+copy .env.example .env      # then set API_KEY and Azure OpenAI values
+alembic upgrade head        # creates data/jobpilot.db
 ```
+
+## Run the backend
+
+```powershell
+uvicorn app.main:create_app --factory --app-dir backend --reload
+```
+
+API docs: http://127.0.0.1:8000/docs. All `/api/profile*` endpoints need the `X-API-Key` header.
+
+## Test and lint
+
+```powershell
+pytest
+ruff check . ; ruff format --check .
+```
+
+After changing `backend/app/models.py`: `alembic revision --autogenerate -m "..."` then `alembic upgrade head`.
 
 ## Daily sync between machines
 

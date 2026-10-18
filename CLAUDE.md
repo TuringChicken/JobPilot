@@ -6,3 +6,6 @@
 - Secrets live in `.env` (gitignored); keep `.env.example` updated with variable names only.
 - Never commit real resumes or personal data; use synthetic sample CVs for tests.
 - Current focus: Phase 1 MVP (single job page + CV → match report).
+- Python 3.13. Backend lives in `backend/app` (FastAPI app factory `app.main:create_app`); tests in `backend/tests`, run `pytest` from repo root.
+- LLM access goes through a Protocol (`ResumeParser`) so tests use fakes; tests must never call the real Azure OpenAI API.
+- Schema changes go through Alembic migrations (`backend/alembic`), not `create_all`.
