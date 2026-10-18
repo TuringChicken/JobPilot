@@ -22,7 +22,10 @@ alembic upgrade head        # creates data/jobpilot.db
 
 ## LLM
 
-Azure OpenAI via the v1 API. Set `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_CHAT_DEPLOYMENT` (the deployment name, not the model name) in `.env`. Without them, resume upload returns 503.
+Select with `LLM_PROVIDER` in `.env`. Without credentials for the selected provider, resume upload returns 503.
+
+- `dashscope` (default): Alibaba Cloud Model Studio, OpenAI-compatible mode. Set `DASHSCOPE_API_KEY`; use the `dashscope-intl` base URL if your key is from the international site. Default model `qwen-plus`.
+- `azure`: Azure OpenAI v1 API. Set `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_CHAT_DEPLOYMENT` (the deployment name, not the model name).
 
 ## Run the backend
 

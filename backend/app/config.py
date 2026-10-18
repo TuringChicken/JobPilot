@@ -14,9 +14,16 @@ class Settings(BaseSettings):
     api_key: SecretStr
     database_url: str = "sqlite:///./data/jobpilot.db"
 
+    llm_provider: Literal["dashscope", "azure"] = "dashscope"
     llm_timeout_seconds: float = 120.0
-    # None = model default. Only reasoning-model deployments accept this parameter.
+    # Azure only. None = model default; only reasoning-model deployments accept it.
     llm_reasoning_effort: Literal["none", "low", "medium", "high"] | None = None
+
+    # Mainland China endpoint; international (Singapore) accounts use
+    # https://dashscope-intl.aliyuncs.com/compatible-mode/v1. Keys are region-specific.
+    dashscope_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    dashscope_api_key: SecretStr = SecretStr("")
+    dashscope_model: str = "qwen-plus"
 
     azure_openai_endpoint: str = ""
     azure_openai_api_key: SecretStr = SecretStr("")

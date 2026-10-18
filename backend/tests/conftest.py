@@ -35,12 +35,19 @@ class FakeResumeParser:
         )
 
 
+@pytest.fixture(autouse=True)
+def _isolate_llm_env(monkeypatch):
+    """Keep credentials from the developer's shell out of tests, so nothing hits a real API."""
+    for name in Settings.model_fields:
+        monkeypatch.delenv(name.upper(), raising=False)
+
+
 @pytest.fixture
 def settings(tmp_path) -> Settings:
     return Settings(
         _env_file=None,
         api_key=API_KEY,
-        # No Azure credentials => no real LLM client; tests inject a fake parser.
+        # No LLM credentials => no real LLM client; tests inject a fake parser.
         database_url=f"sqlite:///{tmp_path / 'test.db'}",
         max_resume_bytes=200_000,
     )
