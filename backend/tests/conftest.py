@@ -38,6 +38,8 @@ class FakeResumeParser:
             education=[],
             skills=[Skill(name="Python", category="language", proficiency=None)],
             certifications=[],
+            languages=[],
+            awards=[],
             work_experience=[],
             projects=[],
         )

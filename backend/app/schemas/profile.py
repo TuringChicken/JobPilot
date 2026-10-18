@@ -30,6 +30,19 @@ class Certification(BaseModel):
     date: str | None
 
 
+class Language(BaseModel):
+    name: str
+    proficiency: str | None = Field(
+        description="As written, e.g. 'native', 'fluent', 'IELTS 6.5'; otherwise null"
+    )
+
+
+class Award(BaseModel):
+    title: str
+    issuer: str | None
+    date: str | None
+
+
 class WorkExperience(BaseModel):
     title: str
     company: str
@@ -50,6 +63,8 @@ class CandidateProfileData(BaseModel):
     education: list[Education]
     skills: list[Skill]
     certifications: list[Certification]
+    languages: list[Language]
+    awards: list[Award]
     work_experience: list[WorkExperience]
     projects: list[Project]
 

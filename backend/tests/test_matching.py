@@ -17,6 +17,8 @@ PROFILE = CandidateProfileData(
     education=[],
     skills=[Skill(name="FastAPI", category=None, proficiency=None)],
     certifications=[],
+    languages=[],
+    awards=[],
     work_experience=[],
     projects=[],
 )
