@@ -7,7 +7,8 @@ from app.api.deps import DbSession, OwnerId, get_resume_parser, get_settings_dep
 from app.config import Settings
 from app.models import CandidateProfile
 from app.schemas.profile import ProfileOut, ProfilePatch
-from app.services.resume_parser import ResumeParseError, ResumeParser
+from app.services.llm import LLMError
+from app.services.resume_parser import ResumeParser
 from app.services.resume_text import (
     ResumeExtractionError,
     UnsupportedResumeType,
@@ -43,8 +44,8 @@ def upload_resume(
 
     try:
         data = parser.parse(text)
-    except ResumeParseError as exc:
-        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Resume parsing failed.") from exc
+    except LLMError as exc:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Resume parsing failed: {exc}") from exc
 
     profile = _get_profile(db, owner_id)
     if profile is None:

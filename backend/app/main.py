@@ -3,13 +3,13 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from openai import OpenAI
 
 from app.api.deps import get_owner_id
 from app.api.routes import health, profile
 from app.config import Settings, get_settings
 from app.db import make_engine, make_session_factory
-from app.services.resume_parser import AzureOpenAIResumeParser
+from app.services.llm import build_llm
+from app.services.resume_parser import LLMResumeParser
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -25,17 +25,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.engine = engine
     app.state.session_factory = make_session_factory(engine)
-    app.state.resume_parser = (
-        AzureOpenAIResumeParser(
-            OpenAI(
-                base_url=settings.azure_openai_endpoint,
-                api_key=settings.azure_openai_api_key.get_secret_value(),
-            ),
-            settings.azure_openai_chat_deployment,
-        )
-        if settings.llm_configured
-        else None
-    )
+    llm = build_llm(settings)
+    app.state.resume_parser = LLMResumeParser(llm) if llm else None
 
     if settings.cors_origins:
         app.add_middleware(
