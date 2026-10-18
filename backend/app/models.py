@@ -1,9 +1,9 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import JSON, DateTime, String, Text
+from sqlalchemy import JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.db import Base
+from app.db import Base, UTCDateTime
 
 
 def _utcnow() -> datetime:
@@ -21,7 +21,18 @@ class CandidateProfile(Base):
     # Validated by app.schemas.profile.CandidateProfileData before every write.
     data: Mapped[dict] = mapped_column(JSON)
     confirmed: Mapped[bool] = mapped_column(default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=_utcnow, onupdate=_utcnow)
+
+
+class JobPreferences(Base):
+    """Stored separately from the CV: preferences are wishes, the profile is facts."""
+
+    __tablename__ = "job_preferences"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    # Validated by app.schemas.preferences.JobPreferencesData before every write.
+    data: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=_utcnow, onupdate=_utcnow)

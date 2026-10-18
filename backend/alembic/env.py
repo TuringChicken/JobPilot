@@ -5,7 +5,7 @@ from sqlalchemy import engine_from_config, pool
 
 import app.models  # noqa: F401  (registers tables on Base.metadata)
 from app.config import get_settings
-from app.db import Base, ensure_sqlite_dir
+from app.db import Base, UTCDateTime, ensure_sqlite_dir
 
 config = context.config
 if config.config_file_name is not None:
@@ -18,6 +18,14 @@ target_metadata = Base.metadata
 render_as_batch = database_url.startswith("sqlite")
 
 
+def render_item(type_, obj, autogen_context):
+    # UTCDateTime only changes Python-side handling; the column is a plain DateTime.
+    # Rendering it as such keeps migration scripts free of app imports.
+    if type_ == "type" and isinstance(obj, UTCDateTime):
+        return "sa.DateTime(timezone=True)"
+    return False
+
+
 def run_migrations_offline() -> None:
     context.configure(
         url=database_url,
@@ -25,6 +33,7 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         render_as_batch=render_as_batch,
+        render_item=render_item,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -42,6 +51,7 @@ def run_migrations_online() -> None:
             connection=connection,
             target_metadata=target_metadata,
             render_as_batch=render_as_batch,
+            render_item=render_item,
         )
         with context.begin_transaction():
             context.run_migrations()

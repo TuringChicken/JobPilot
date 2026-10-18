@@ -35,6 +35,13 @@ def test_upload_docx_creates_unconfirmed_profile(client, fake_parser):
     assert client.get("/api/profile").json()["id"] == body["id"]
 
 
+def test_updated_at_is_utc_before_and_after_db_round_trip(client):
+    uploaded = upload(client).json()["updated_at"]
+    fetched = client.get("/api/profile").json()["updated_at"]
+    assert uploaded == fetched
+    assert fetched.endswith("Z")
+
+
 def test_upload_pdf_passes_extracted_text_to_parser(client, fake_parser):
     resp = upload(client, "cv.pdf", make_pdf(), "application/pdf")
     assert resp.status_code == 200

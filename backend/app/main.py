@@ -5,7 +5,7 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.deps import get_owner_id
-from app.api.routes import health, profile
+from app.api.routes import health, preferences, profile
 from app.config import Settings, get_settings
 from app.db import make_engine, make_session_factory
 from app.services.llm import build_llm
@@ -37,5 +37,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
 
     app.include_router(health.router, prefix="/api")
-    app.include_router(profile.router, prefix="/api", dependencies=[Depends(get_owner_id)])
+    for router in (profile.router, preferences.router):
+        app.include_router(router, prefix="/api", dependencies=[Depends(get_owner_id)])
     return app
