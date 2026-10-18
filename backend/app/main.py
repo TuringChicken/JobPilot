@@ -5,10 +5,12 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.deps import get_owner_id
-from app.api.routes import health, preferences, profile
+from app.api.routes import health, jobs, matches, preferences, profile
 from app.config import Settings, get_settings
 from app.db import make_engine, make_session_factory
+from app.services.job_parser import LLMJobParser
 from app.services.llm import build_llm
+from app.services.match_evaluator import LLMMatchEvaluator
 from app.services.resume_parser import LLMResumeParser
 
 
@@ -27,6 +29,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.session_factory = make_session_factory(engine)
     llm = build_llm(settings)
     app.state.resume_parser = LLMResumeParser(llm) if llm else None
+    app.state.job_parser = LLMJobParser(llm) if llm else None
+    app.state.match_evaluator = LLMMatchEvaluator(llm) if llm else None
 
     if settings.cors_origins:
         app.add_middleware(
@@ -37,6 +41,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
 
     app.include_router(health.router, prefix="/api")
-    for router in (profile.router, preferences.router):
+    for router in (profile.router, preferences.router, jobs.router, matches.router):
         app.include_router(router, prefix="/api", dependencies=[Depends(get_owner_id)])
     return app

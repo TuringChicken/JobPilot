@@ -7,6 +7,8 @@ from fastapi.security import APIKeyHeader
 from sqlalchemy.orm import Session
 
 from app.config import Settings
+from app.services.job_parser import JobParser
+from app.services.match_evaluator import MatchEvaluator
 from app.services.resume_parser import ResumeParser
 
 _api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
@@ -34,11 +36,23 @@ def get_owner_id(
     return LOCAL_OWNER_ID
 
 
-def get_resume_parser(request: Request) -> ResumeParser:
-    parser = request.app.state.resume_parser
-    if parser is None:
+def _require_llm_service(request: Request, name: str):
+    service = getattr(request.app.state, name)
+    if service is None:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "LLM is not configured.")
-    return parser
+    return service
+
+
+def get_resume_parser(request: Request) -> ResumeParser:
+    return _require_llm_service(request, "resume_parser")
+
+
+def get_job_parser(request: Request) -> JobParser:
+    return _require_llm_service(request, "job_parser")
+
+
+def get_match_evaluator(request: Request) -> MatchEvaluator:
+    return _require_llm_service(request, "match_evaluator")
 
 
 DbSession = Annotated[Session, Depends(get_db)]

@@ -5,10 +5,18 @@ import pytest
 from docx import Document
 from fastapi.testclient import TestClient
 
-from app.api.deps import get_resume_parser
+from app.api.deps import get_job_parser, get_match_evaluator, get_resume_parser
 from app.config import Settings
 from app.db import Base
 from app.main import create_app
+from app.schemas.jobs import (
+    DimensionAssessment,
+    Evidence,
+    JobPostingData,
+    MatchEvaluation,
+    SkillGap,
+    SkillMatch,
+)
 from app.schemas.profile import CandidateProfileData, Skill
 
 API_KEY = "test-key"
@@ -35,6 +43,85 @@ class FakeResumeParser:
         )
 
 
+SAMPLE_JOB_TEXT = (
+    "Junior AI Engineer at Example Ltd, Auckland. Hybrid, full-time. "
+    "Salary $75,000 - $85,000 per year. "
+    "You will build LLM-powered features and REST APIs in Python. "
+    "Required: Python, FastAPI, Azure. Nice to have: Docker. "
+    "Visa sponsorship available for the right candidate."
+)
+
+
+def make_job_data(**overrides) -> JobPostingData:
+    fields = dict(
+        is_job_posting=True,
+        title="Junior AI Engineer",
+        company="Example Ltd",
+        location="Auckland",
+        work_arrangement="hybrid",
+        employment_type="full_time",
+        experience_level="junior",
+        min_years_experience=None,
+        salary_min=75000,
+        salary_max=85000,
+        salary_currency="NZD",
+        salary_period="year",
+        required_skills=["Python", "FastAPI", "Azure"],
+        preferred_skills=["Docker"],
+        responsibilities=["Build LLM-powered features"],
+        qualifications=[],
+        work_rights=None,
+    )
+    return JobPostingData(**(fields | overrides))
+
+
+def make_evaluation(**overrides) -> MatchEvaluation:
+    def dim(score: int) -> DimensionAssessment:
+        return DimensionAssessment(
+            score=score,
+            rationale="Fake rationale",
+            evidence=[
+                Evidence(source="cv", quote="Python developer"),
+                Evidence(source="jd", quote="REST APIs in Python"),
+            ],
+        )
+
+    fields = dict(
+        skills=dim(80),
+        experience=dim(60),
+        responsibilities=dim(70),
+        matched_skills=[
+            SkillMatch(skill="Python", evidence=[Evidence(source="cv", quote="Python")])
+        ],
+        missing_skills=[SkillGap(skill="Azure", importance="required", note=None)],
+        condition_checks=[],
+        uncertainties=["Work rights not stated"],
+    )
+    return MatchEvaluation(**(fields | overrides))
+
+
+class FakeJobParser:
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+        self.result = make_job_data()
+
+    def parse(self, job_text: str) -> JobPostingData:
+        self.calls.append(job_text)
+        return self.result
+
+
+class FakeMatchEvaluator:
+    def __init__(self) -> None:
+        self.calls: list[dict] = []
+        self.result = make_evaluation()
+
+    def evaluate(self, profile, preferences, job, job_text) -> MatchEvaluation:
+        self.calls.append(
+            {"profile": profile, "preferences": preferences, "job": job, "job_text": job_text}
+        )
+        return self.result
+
+
 @pytest.fixture(autouse=True)
 def _isolate_llm_env(monkeypatch):
     """Keep credentials from the developer's shell out of tests, so nothing hits a real API."""
@@ -59,10 +146,22 @@ def fake_parser() -> FakeResumeParser:
 
 
 @pytest.fixture
-def client(settings, fake_parser) -> Iterator[TestClient]:
+def fake_job_parser() -> FakeJobParser:
+    return FakeJobParser()
+
+
+@pytest.fixture
+def fake_evaluator() -> FakeMatchEvaluator:
+    return FakeMatchEvaluator()
+
+
+@pytest.fixture
+def client(settings, fake_parser, fake_job_parser, fake_evaluator) -> Iterator[TestClient]:
     app = create_app(settings)
     Base.metadata.create_all(app.state.engine)
     app.dependency_overrides[get_resume_parser] = lambda: fake_parser
+    app.dependency_overrides[get_job_parser] = lambda: fake_job_parser
+    app.dependency_overrides[get_match_evaluator] = lambda: fake_evaluator
     with TestClient(app, headers={"X-API-Key": API_KEY}) as c:
         yield c
 

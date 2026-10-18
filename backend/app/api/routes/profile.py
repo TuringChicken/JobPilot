@@ -1,11 +1,11 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from app.api.deps import DbSession, OwnerId, get_resume_parser, get_settings_dep
 from app.config import Settings
-from app.models import CandidateProfile
+from app.models import CandidateProfile, MatchResult
 from app.schemas.profile import ProfileOut, ProfilePatch
 from app.services.llm import LLMError
 from app.services.resume_parser import ResumeParser
@@ -86,4 +86,6 @@ def delete_profile(db: DbSession, owner_id: OwnerId) -> None:
     profile = _get_profile(db, owner_id)
     if profile is not None:
         db.delete(profile)
-        db.commit()
+    # Match reports quote the CV, so they go with it.
+    db.execute(delete(MatchResult).where(MatchResult.owner_id == owner_id))
+    db.commit()
