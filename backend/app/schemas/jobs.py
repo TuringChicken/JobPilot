@@ -159,7 +159,14 @@ class MatchOut(BaseModel):
     id: int
     job: JobOut
     report: MatchReport
+    saved: bool
     created_at: datetime
+
+
+class MatchPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    saved: bool
 
 
 class MatchSummary(BaseModel):
@@ -170,4 +177,5 @@ class MatchSummary(BaseModel):
     url: str | None
     overall_score: int
     hard_filter_status: str
+    saved: bool
     created_at: datetime

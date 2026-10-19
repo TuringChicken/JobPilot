@@ -71,8 +71,22 @@ export class JobPilotApi {
     });
   }
 
-  matches(limit = 20): Promise<MatchSummary[]> {
-    return this.request(`/api/matches?limit=${limit}`);
+  /** `saved` filters to saved (true) or unsaved (false) reports; omit for all. */
+  matches(options: { limit?: number; saved?: boolean } = {}): Promise<MatchSummary[]> {
+    const params = new URLSearchParams({ limit: String(options.limit ?? 50) });
+    if (options.saved !== undefined) params.set("saved", String(options.saved));
+    return this.request(`/api/matches?${params}`);
+  }
+
+  setSaved(id: number, saved: boolean): Promise<MatchOut> {
+    return this.request(`/api/matches/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ saved }),
+    });
+  }
+
+  async deleteMatch(id: number): Promise<void> {
+    await this.request(`/api/matches/${id}`, { method: "DELETE" });
   }
 
   match(id: number): Promise<MatchOut> {

@@ -6,18 +6,24 @@ import { FILTER_TONES, errorText, formatDate, scoreTone } from "../lib/format";
 import type { MatchOut, MatchSummary } from "../lib/types";
 import { ReportView } from "./ReportView";
 
+type Filter = "all" | "saved";
+
 export function HistoryView({ api, active }: { api: JobPilotApi; active: boolean }) {
   const { t, locale } = useI18n();
+  const [filter, setFilter] = useState<Filter>("all");
   const [items, setItems] = useState<MatchSummary[] | null>(null);
   const [selected, setSelected] = useState<MatchOut | null>(null);
   const [error, setError] = useState<unknown>(null);
 
-  // Reload whenever the tab is opened, so new analyses show up.
+  // Reload whenever the tab is opened or the list is shown again, so changes show up.
+  const showingList = active && selected === null;
   useEffect(() => {
-    if (!active) return;
+    if (!showingList) return;
     setError(null);
-    api.matches().then(setItems, setError);
-  }, [api, active]);
+    api
+      .matches({ saved: filter === "saved" ? true : undefined })
+      .then(setItems, setError);
+  }, [api, showingList, filter]);
 
   async function open(id: number) {
     setError(null);
@@ -34,18 +40,36 @@ export function HistoryView({ api, active }: { api: JobPilotApi; active: boolean
         <button className="link" onClick={() => setSelected(null)}>
           {t.history.back}
         </button>
-        <ReportView match={selected} />
+        <ReportView
+          api={api}
+          match={selected}
+          onChange={setSelected}
+          onDeleted={() => setSelected(null)}
+        />
       </section>
     );
   }
 
   return (
     <section className="stack">
+      <div className="segmented">
+        {(["all", "saved"] as const).map((f) => (
+          <button
+            key={f}
+            className={f === filter ? "active" : ""}
+            onClick={() => setFilter(f)}
+          >
+            {f === "all" ? t.history.all : t.history.savedOnly}
+          </button>
+        ))}
+      </div>
       {error !== null && (
         <div className="notice bad">{errorText(t, error, api.settings.baseUrl)}</div>
       )}
       {items === null && error === null && <p className="muted">{t.history.loading}</p>}
-      {items?.length === 0 && <p className="muted">{t.history.empty}</p>}
+      {items?.length === 0 && (
+        <p className="muted">{filter === "saved" ? t.history.emptySaved : t.history.empty}</p>
+      )}
       <ul className="history">
         {items?.map((m) => (
           <li key={m.id}>
@@ -54,7 +78,10 @@ export function HistoryView({ api, active }: { api: JobPilotApi; active: boolean
                 {m.overall_score}
               </span>
               <span className="stack tight">
-                <strong>{m.title ?? t.report.untitled}</strong>
+                <strong>
+                  {m.saved && <span className="star">★ </span>}
+                  {m.title ?? t.report.untitled}
+                </strong>
                 <span className="muted small">
                   {[m.company, formatDate(locale, m.created_at)].filter(Boolean).join(" · ")}
                 </span>

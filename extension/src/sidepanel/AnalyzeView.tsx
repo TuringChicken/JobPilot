@@ -65,7 +65,12 @@ export function AnalyzeView({
       {state.kind === "done" && (
         <>
           {state.fromSelection && <p className="hint">{t.analyze.fromSelection}</p>}
-          <ReportView match={state.match} />
+          <ReportView
+            api={api}
+            match={state.match}
+            onChange={(match) => setState({ ...state, match })}
+            onDeleted={() => setState({ kind: "idle" })}
+          />
         </>
       )}
     </section>

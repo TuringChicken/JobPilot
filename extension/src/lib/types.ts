@@ -59,6 +59,7 @@ export interface MatchOut {
   id: number;
   job: { id: number; url: string | null; data: JobPostingData };
   report: MatchReport;
+  saved: boolean;
   created_at: string;
 }
 
@@ -70,6 +71,7 @@ export interface MatchSummary {
   url: string | null;
   overall_score: number;
   hard_filter_status: HardFilterStatus;
+  saved: boolean;
   created_at: string;
 }
 

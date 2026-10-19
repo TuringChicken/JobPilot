@@ -399,3 +399,38 @@ textarea.json {
     transform: rotate(360deg);
   }
 }
+
+button.saved,
+.star {
+  color: var(--warn);
+}
+
+button.saved {
+  border-color: var(--warn);
+  background: var(--warn-bg);
+}
+
+button.danger {
+  color: var(--bad);
+}
+
+.segmented {
+  display: flex;
+  align-self: flex-start;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.segmented button {
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+}
+
+.segmented button.active {
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+}

@@ -1,17 +1,33 @@
+import { useState } from "react";
+
 import { useI18n } from "../i18n";
+import { type JobPilotApi } from "../lib/api";
+import { saveTextFile } from "../lib/download";
 import {
   CHECK_TONES,
   FILTER_TONES,
   checkName,
+  errorText,
   formatDate,
   salaryText,
   scoreTone,
 } from "../lib/format";
+import { markdownFileName, reportToMarkdown } from "../lib/markdown";
 import type { DimensionScore, Evidence, MatchOut } from "../lib/types";
 
 const DIMENSIONS = ["skills", "experience", "responsibilities", "preferences"] as const;
 
-export function ReportView({ match }: { match: MatchOut }) {
+export function ReportView({
+  api,
+  match,
+  onChange,
+  onDeleted,
+}: {
+  api: JobPilotApi;
+  match: MatchOut;
+  onChange: (match: MatchOut) => void;
+  onDeleted: () => void;
+}) {
   const { t, locale } = useI18n();
   const { report, job } = match;
   const status = report.hard_filter.status;
@@ -35,6 +51,8 @@ export function ReportView({ match }: { match: MatchOut }) {
         {meta && <p className="muted">{meta}</p>}
         <p className="muted small">{formatDate(locale, match.created_at)}</p>
       </header>
+
+      <ReportActions api={api} match={match} onChange={onChange} onDeleted={onDeleted} />
 
       <div className="score-row">
         <div className={`score ${scoreTone(report.overall_score)}`}>{report.overall_score}</div>
@@ -150,5 +168,78 @@ function EvidenceItem({ evidence }: { evidence: Evidence }) {
       <q>{evidence.quote}</q>
       {!evidence.verified && <span title={t.report.unverifiedTitle}> ⚠</span>}
     </li>
+  );
+}
+
+type ActionStatus = { kind: "exported"; name: string } | { kind: "error"; error: unknown } | null;
+
+function ReportActions({
+  api,
+  match,
+  onChange,
+  onDeleted,
+}: {
+  api: JobPilotApi;
+  match: MatchOut;
+  onChange: (match: MatchOut) => void;
+  onDeleted: () => void;
+}) {
+  const { t, locale } = useI18n();
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<ActionStatus>(null);
+
+  async function act(action: () => Promise<void>) {
+    setBusy(true);
+    setStatus(null);
+    try {
+      await action();
+    } catch (error) {
+      setStatus({ kind: "error", error });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const toggleSaved = () => act(async () => onChange(await api.setSaved(match.id, !match.saved)));
+
+  const exportMarkdown = () =>
+    act(async () => {
+      const name = await saveTextFile(markdownFileName(match), reportToMarkdown(t, locale, match));
+      if (name) setStatus({ kind: "exported", name });
+    });
+
+  const remove = () => {
+    if (!confirm(t.report.deleteConfirm)) return;
+    void act(async () => {
+      await api.deleteMatch(match.id);
+      onDeleted();
+    });
+  };
+
+  return (
+    <div className="stack tight">
+      <div className="row">
+        <button
+          className={match.saved ? "saved" : ""}
+          onClick={toggleSaved}
+          disabled={busy}
+          title={match.saved ? t.report.unsaveTitle : undefined}
+        >
+          {match.saved ? t.report.saved : t.report.save}
+        </button>
+        <button onClick={exportMarkdown} disabled={busy}>
+          {t.report.exportMarkdown}
+        </button>
+        <button className="danger" onClick={remove} disabled={busy}>
+          {t.report.delete}
+        </button>
+      </div>
+      {status?.kind === "exported" && (
+        <p className="hint">{t.report.exported(status.name)}</p>
+      )}
+      {status?.kind === "error" && (
+        <div className="notice bad">{errorText(t, status.error, api.settings.baseUrl)}</div>
+      )}
+    </div>
   );
 }

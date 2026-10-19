@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import JSON, ForeignKey, String, Text
+from sqlalchemy import JSON, ForeignKey, String, Text, false
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base, UTCDateTime
@@ -64,6 +64,9 @@ class MatchResult(Base):
     # Validated by app.schemas.jobs.MatchReport. Contains CV-derived quotes, so it is
     # deleted together with the candidate profile.
     report: Mapped[dict] = mapped_column(JSON)
+    # Every analysis is kept (so a closed side panel can still find it); saved ones are the
+    # user's picks, listed separately.
+    saved: Mapped[bool] = mapped_column(default=False, server_default=false(), index=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=_utcnow, index=True)
 
     job: Mapped[Job] = relationship()
