@@ -1,6 +1,9 @@
 [tool.pytest.ini_options]
 pythonpath = ["backend"]
 testpaths = ["backend/tests"]
+# Live smoke tests call the real LLM; run them explicitly with `pytest -m live -s`.
+addopts = "-m 'not live'"
+markers = ["live: calls the real LLM provider from .env (skipped by default)"]
 
 [tool.ruff]
 line-length = 100

@@ -105,7 +105,7 @@ def test_build_llm_defaults_to_dashscope_and_requires_key():
 def test_build_llm_dashscope_uses_json_mode_without_thinking():
     llm = build_llm(make_settings(dashscope_api_key="sk-test"))
     assert llm is not None
-    assert llm.model == "qwen-plus"
+    assert llm.model == "qwen3.8-27b"
     assert llm.json_schema_mode is False
     assert llm.extra_body == {"enable_thinking": False}
     assert str(llm.client.base_url).startswith("https://dashscope.aliyuncs.com/compatible-mode/v1")

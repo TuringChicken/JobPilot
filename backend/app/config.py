@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     # https://dashscope-intl.aliyuncs.com/compatible-mode/v1. Keys are region-specific.
     dashscope_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     dashscope_api_key: SecretStr = SecretStr("")
-    dashscope_model: str = "qwen-plus"
+    dashscope_model: str = "qwen3.8-27b"
 
     azure_openai_endpoint: str = ""
     azure_openai_api_key: SecretStr = SecretStr("")

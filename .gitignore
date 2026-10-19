@@ -42,3 +42,6 @@ Thumbs.db
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Local-only development notes (dev log, known issues, backend notes); not published
+docs/
