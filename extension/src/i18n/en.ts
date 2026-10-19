@@ -1,0 +1,135 @@
+import type { Messages } from "./zh-CN";
+
+export const en: Messages = {
+  tabs: { analyze: "Analyze", profile: "Resume", history: "History", settings: "Settings" },
+  busy: "In progress",
+
+  analyze: {
+    button: "Analyze this page",
+    running: "Analyzing…",
+    hint: "Reads the visible text of the current tab only when you click. Select the job description first (200+ characters) to analyze just that part.",
+    progress: (seconds: number) =>
+      `Parsing the posting and assessing the match, usually about 30 seconds… (${seconds}s)`,
+    progressHint: "Closing the side panel won't stop the analysis; find the result under History.",
+    fromSelection: "Only the selected text was analyzed.",
+    grantAccess: "Allow reading site content",
+    noResume: "No resume uploaded yet. Upload one first.",
+    unconfirmed: "Your resume hasn't been reviewed yet; parsing errors may affect scores.",
+    uploadResume: "Upload resume",
+    reviewResume: "Review and confirm",
+  },
+
+  page: {
+    noTab: "Couldn't find the current tab",
+    noAccess:
+      "Can't read this page. Click the JobPilot icon in the toolbar and try again, or allow reading site content.",
+  },
+
+  report: {
+    untitled: "Untitled job",
+    formula: "Total = 0.35S + 0.25E + 0.20R + 0.20P",
+    dimensions: {
+      skills: "Skills S",
+      experience: "Experience E",
+      responsibilities: "Duties R",
+      preferences: "Prefs P",
+    },
+    unconfirmed: "Resume not yet confirmed.",
+    truncated: "The page text was too long; only the first part was analyzed.",
+    unverified: (n: number) =>
+      `${n} quote${n === 1 ? "" : "s"} couldn't be found in the source (marked ⚠). Check them yourself.`,
+    unverifiedTitle: "This quote wasn't found in the source text",
+    hardFilter: "Hard requirements",
+    matchedSkills: "Matched skills",
+    missingSkills: "Skill gaps",
+    required: "Required",
+    preferred: "Nice to have",
+    uncertainties: "Uncertainties",
+    sourceCv: "CV",
+    sourceJd: "JD",
+    filter: { pass: "Requirements met", needs_review: "Some items to check", fail: "Requirement not met" },
+    check: { pass: "Met", unknown: "Unclear", fail: "Not met" },
+    checkNames: {
+      location: "Location",
+      work_arrangement: "Work arrangement",
+      employment_type: "Employment type",
+      experience_level: "Level",
+      salary: "Salary",
+      excluded_company: "Excluded company",
+    },
+    mustHave: (c: string) => `Must-have: ${c}`,
+    dealBreaker: (c: string) => `Deal-breaker: ${c}`,
+    perYear: "/yr",
+    perHour: "/hr",
+  },
+
+  history: {
+    loading: "Loading…",
+    empty: "No analyses yet.",
+    back: "← Back to list",
+  },
+
+  profile: {
+    unreachable: "Can't reach the backend. Check Settings.",
+    parsing: "Parsing your resume, usually 10–60 seconds…",
+    saving: "Saving…",
+    confirming: "Confirming…",
+    updatedAt: (date: string) => `Updated ${date}`,
+    confirmed: "Confirmed. Job analyses will use the information below.",
+    review: "Please review the parsed result. Click Edit to fix mistakes, then Confirm.",
+    confirm: "Confirm",
+    edit: "Edit",
+    reupload: "Upload again",
+    uploadLabel: "Upload resume (PDF or DOCX, max 5 MB)",
+    uploadHint:
+      "The resume text is sent to the model configured on the backend. Your name and contact details are not kept in the structured data. Uploading again replaces the current resume and needs confirming again.",
+    upload: "Upload and parse",
+    cancel: "Cancel",
+    save: "Save",
+    editHint: "Edit the parsed result as JSON. The backend validates it on save; saving doesn't confirm it.",
+    invalidJson: "Invalid JSON. Check quotes, commas and brackets.",
+    none: "(none)",
+    summary: "Summary",
+    work: "Work experience",
+    projects: "Projects",
+    techStack: (s: string) => `Tech stack: ${s}`,
+    skills: "Skills",
+    education: "Education",
+    degree: "Degree",
+    certifications: "Certifications",
+    languages: "Languages",
+    awards: "Awards",
+  },
+
+  settings: {
+    language: "Interface and report language",
+    languageHint: "Also sets the language of model-written report text; quotes stay in the original. Applies to new analyses.",
+    baseUrl: "Backend URL",
+    apiKey: "API key",
+    apiKeyPlaceholder: "Same as API_KEY in the backend .env",
+    save: "Save and test connection",
+    testing: "Testing connection…",
+    denied: "Permission to access this backend URL was not granted",
+    connected: (file: string, confirmed: boolean) =>
+      `Connected. Resume: ${file}${confirmed ? " (confirmed)" : " (not confirmed)"}`,
+    connectedNoResume: "Connected, but no resume uploaded yet.",
+    savedButFailed: (msg: string) => `Saved, but the connection test failed: ${msg}`,
+    storageHint: "Settings are stored only in this browser (chrome.storage.local) and don't sync to other devices.",
+    invalidUrl: "Invalid backend URL, e.g. http://127.0.0.1:8000",
+    invalidProtocol: "The backend URL must start with http:// or https://",
+  },
+
+  errors: {
+    unreachable: (url: string) => `Can't reach the backend at ${url}. Is it running?`,
+    httpStatus: (status: number) => `Request failed (HTTP ${status})`,
+    status: {
+      401: "Wrong API key; check Settings",
+      409: "No resume uploaded yet",
+      413: "File too large",
+      415: "Only PDF and DOCX files are supported",
+      422: "The content couldn't be processed",
+      502: "The model call failed; try again later",
+      503: "No LLM configured on the backend",
+    },
+  },
+};

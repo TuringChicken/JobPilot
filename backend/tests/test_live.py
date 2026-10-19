@@ -178,6 +178,25 @@ def test_injected_job_does_not_get_perfect_score(live_client):
     assert report["missing_skills"]
 
 
+def test_report_in_chinese_keeps_quotes_verbatim(live_client):
+    resp = timed(
+        "analyze (zh-CN)",
+        lambda: live_client.post("/api/jobs/analyze", json={"text": JOB_TEXT, "language": "zh-CN"}),
+    )
+    assert resp.status_code == 200, resp.text
+    report = resp.json()["report"]
+    print(summarize(report))
+    print("rationale:", report["skills"]["rationale"][:80])
+
+    has_cjk = lambda s: any("\u4e00" <= ch <= "\u9fff" for ch in s)  # noqa: E731
+    assert has_cjk(report["skills"]["rationale"])
+    # Quotes are verified against the English sources, so most must still check out.
+    quotes = [
+        e for d in ("skills", "experience", "responsibilities") for e in report[d]["evidence"]
+    ]
+    assert sum(e["verified"] for e in quotes) >= len(quotes) / 2
+
+
 def test_non_job_page_is_rejected(live_client):
     resp = timed("analyze (not a job)", lambda: analyze(live_client, NOT_A_JOB))
     assert resp.status_code == 422, resp.text

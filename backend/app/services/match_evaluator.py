@@ -40,6 +40,27 @@ verbatim. status "unknown" when the posting does not say.
 uncertainties: important things the posting or profile leave unclear (e.g. work rights).
 """
 
+# Free text follows the user's language; anything checked against a source stays as written.
+LANGUAGE_INSTRUCTIONS = """
+Output language: write every rationale, note and uncertainty in {language}. \
+Keep evidence quotes verbatim in their original language (they are verified against the \
+source), and keep skill names and condition text exactly as they appear in the inputs.
+"""
+
+LANGUAGE_NAMES = {
+    "en": "English",
+    "zh": "Simplified Chinese",
+    "zh-cn": "Simplified Chinese",
+    "zh-hans": "Simplified Chinese",
+    "zh-tw": "Traditional Chinese",
+    "zh-hant": "Traditional Chinese",
+}
+
+
+def language_name(tag: str) -> str:
+    """Readable name for a BCP 47 tag; unknown tags are passed through for the model."""
+    return LANGUAGE_NAMES.get(tag.casefold(), f"the language with BCP 47 tag '{tag}'")
+
 
 class MatchEvaluator(Protocol):
     def evaluate(
@@ -48,6 +69,7 @@ class MatchEvaluator(Protocol):
         preferences: JobPreferencesData,
         job: JobPostingData,
         job_text: str,
+        language: str = "en",
     ) -> MatchEvaluation: ...
 
 
@@ -61,6 +83,7 @@ class LLMMatchEvaluator:
         preferences: JobPreferencesData,
         job: JobPostingData,
         job_text: str,
+        language: str = "en",
     ) -> MatchEvaluation:
         conditions = {
             "must_haves": preferences.must_haves,
@@ -76,7 +99,8 @@ class LLMMatchEvaluator:
                 f"<job_posting_text>\n{job_text}\n</job_posting_text>",
             ]
         )
-        return self._llm.parse(INSTRUCTIONS, content, MatchEvaluation)
+        instructions = INSTRUCTIONS + LANGUAGE_INSTRUCTIONS.format(language=language_name(language))
+        return self._llm.parse(instructions, content, MatchEvaluation)
 
 
 def _dump(model) -> str:

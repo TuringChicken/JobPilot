@@ -1,0 +1,130 @@
+// Source of truth for UI strings: other locales must provide the same keys (see Messages).
+export const zhCN = {
+  tabs: { analyze: "分析", profile: "简历", history: "历史", settings: "设置" },
+  busy: "进行中",
+
+  analyze: {
+    button: "分析当前页面",
+    running: "分析中…",
+    hint: "只在点击时读取当前标签页的可见文字。若先选中岗位描述（200 字以上），则只分析选中部分。",
+    progress: (seconds: number) =>
+      `正在解析岗位并评估匹配度，通常需要 30 秒左右……（已用 ${seconds} 秒）`,
+    progressHint: "关闭侧边栏不会中断后端分析，结果可在“历史”中查看。",
+    fromSelection: "本次只分析了选中的文字。",
+    grantAccess: "授权读取网站内容",
+    noResume: "还没有上传简历，请先上传。",
+    unconfirmed: "简历解析结果尚未确认，评分可能受解析错误影响。",
+    uploadResume: "上传简历",
+    reviewResume: "查看并确认",
+  },
+
+  page: {
+    noTab: "找不到当前标签页",
+    noAccess:
+      "无法读取此页面。请点击浏览器工具栏中的 JobPilot 图标后重试，或授权读取网站内容。",
+  },
+
+  report: {
+    untitled: "未命名岗位",
+    formula: "总分 = 0.35S + 0.25E + 0.20R + 0.20P",
+    dimensions: { skills: "技能 S", experience: "经验 E", responsibilities: "职责 R", preferences: "偏好 P" },
+    unconfirmed: "简历解析结果尚未确认。",
+    truncated: "页面文字过长，只分析了前面的部分。",
+    unverified: (n: number) => `有 ${n} 条引用未能在原文中核实（标记为 ⚠），请人工判断。`,
+    unverifiedTitle: "未能在原文中找到这段引用",
+    hardFilter: "硬性条件",
+    matchedSkills: "匹配的技能",
+    missingSkills: "技能差距",
+    required: "必需",
+    preferred: "加分",
+    uncertainties: "不确定项",
+    sourceCv: "简历",
+    sourceJd: "JD",
+    filter: { pass: "硬性条件通过", needs_review: "部分条件待确认", fail: "有硬性条件不符" },
+    check: { pass: "符合", unknown: "待确认", fail: "不符合" },
+    checkNames: {
+      location: "地点",
+      work_arrangement: "工作形式",
+      employment_type: "雇佣类型",
+      experience_level: "级别",
+      salary: "薪资",
+      excluded_company: "排除公司",
+    } as Record<string, string>,
+    mustHave: (c: string) => `必要条件：${c}`,
+    dealBreaker: (c: string) => `排除条件：${c}`,
+    perYear: "/年",
+    perHour: "/小时",
+  },
+
+  history: {
+    loading: "加载中…",
+    empty: "还没有分析记录。",
+    back: "← 返回列表",
+  },
+
+  profile: {
+    unreachable: "无法连接后端，请检查“设置”。",
+    parsing: "正在解析简历，通常需要 10–60 秒…",
+    saving: "保存中…",
+    confirming: "确认中…",
+    updatedAt: (date: string) => `更新于 ${date}`,
+    confirmed: "已确认。分析岗位时将使用以下信息。",
+    review: "请核对以下解析结果。有误可点“修改”，无误后点“确认无误”。",
+    confirm: "确认无误",
+    edit: "修改",
+    reupload: "重新上传",
+    uploadLabel: "上传简历（PDF 或 DOCX，最大 5 MB）",
+    uploadHint:
+      "简历文字会发送给后端配置的模型进行解析。姓名和联系方式不会保存到结构化数据中。重新上传会覆盖当前简历，需要重新确认。",
+    upload: "上传并解析",
+    cancel: "取消",
+    save: "保存",
+    editHint: "直接修改解析结果（JSON）。保存时后端会校验格式；保存不会自动确认。",
+    invalidJson: "JSON 格式有误，请检查引号、逗号和括号。",
+    none: "（无）",
+    summary: "概要",
+    work: "工作经历",
+    projects: "项目",
+    techStack: (s: string) => `技术栈：${s}`,
+    skills: "技能",
+    education: "教育",
+    degree: "学历",
+    certifications: "证书",
+    languages: "语言",
+    awards: "奖项",
+  },
+
+  settings: {
+    language: "界面与报告语言",
+    languageHint: "也决定模型生成报告时使用的语言；原文引用保持原样。只影响之后的新分析。",
+    baseUrl: "后端地址",
+    apiKey: "API Key",
+    apiKeyPlaceholder: "与后端 .env 中的 API_KEY 相同",
+    save: "保存并测试连接",
+    testing: "测试连接中…",
+    denied: "未授予访问该后端地址的权限",
+    connected: (file: string, confirmed: boolean) =>
+      `已连接。当前简历：${file}${confirmed ? "（已确认）" : "（未确认）"}`,
+    connectedNoResume: "已连接，但还没有上传简历。",
+    savedButFailed: (msg: string) => `已保存，但连接测试失败：${msg}`,
+    storageHint: "设置只保存在本机浏览器中（chrome.storage.local），不会同步到其他设备。",
+    invalidUrl: "后端地址格式不正确，例如 http://127.0.0.1:8000",
+    invalidProtocol: "后端地址必须以 http:// 或 https:// 开头",
+  },
+
+  errors: {
+    unreachable: (url: string) => `无法连接后端 ${url}，请确认后端已启动`,
+    httpStatus: (status: number) => `请求失败（HTTP ${status}）`,
+    status: {
+      401: "API Key 不正确，请在设置中检查",
+      409: "还没有上传简历",
+      413: "文件太大",
+      415: "只支持 PDF 和 DOCX 文件",
+      422: "内容无法处理",
+      502: "模型调用失败，请稍后重试",
+      503: "后端未配置 LLM",
+    } as Record<number, string>,
+  },
+};
+
+export type Messages = typeof zhCN;

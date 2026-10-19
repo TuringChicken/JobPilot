@@ -6,7 +6,7 @@ See [JobPilot_AI_Project_Outline.md](JobPilot_AI_Project_Outline.md) for the ful
 
 ## Status
 
-Phase 1 (MVP): single job page + one CV → AI match report. Backend skeleton with resume upload/parsing is in place.
+Phase 1 (MVP): single job page + one CV → AI match report. Backend (resume parsing, preferences, job analysis, match reports) is done; the Chrome extension can analyze the current page and show reports. Resume upload and preferences are still edited through the API docs page.
 
 ## Setup on a new machine
 
@@ -35,11 +35,27 @@ uvicorn app.main:create_app --factory --app-dir backend --reload
 
 API docs: http://127.0.0.1:8000/docs. All `/api/profile*` endpoints need the `X-API-Key` header.
 
+## Chrome extension
+
+Side panel extension in `extension/` (Manifest V3, React, TypeScript, Vite). Needs Node.js 20+.
+
+```powershell
+cd extension
+npm install
+npm run build        # outputs extension/dist; `npm run dev` rebuilds on change
+```
+
+Load it: `chrome://extensions` → enable Developer mode → "Load unpacked" → select `extension/dist`. After a rebuild, click the reload icon on the extension card.
+
+Use it: start the backend, click the JobPilot toolbar icon to open the side panel, enter the backend URL and the `API_KEY` from `.env` under 设置, then open a job posting and click 分析当前页面. The page is read only when you click; select the job description first (200+ characters) to analyze just that part.
+
 ## Test and lint
 
 ```powershell
 pytest
 ruff check . ; ruff format --check .
+pytest -m live -s                     # optional: smoke tests against the real LLM in .env
+cd extension; npm run build; npm test  # extension typecheck, build, unit tests
 ```
 
 After changing `backend/app/models.py`: `alembic revision --autogenerate -m "..."` then `alembic upgrade head`.

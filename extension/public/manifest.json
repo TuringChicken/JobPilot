@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "JobPilot AI",
+  "version": "0.1.0",
+  "description": "Match the job posting you are viewing against your resume.",
+  "minimum_chrome_version": "116",
+  "action": { "default_title": "Open JobPilot" },
+  "side_panel": { "default_path": "sidepanel.html" },
+  "background": { "service_worker": "background.js", "type": "module" },
+  "permissions": ["sidePanel", "activeTab", "scripting", "storage"],
+  "host_permissions": ["http://127.0.0.1:8000/*", "http://localhost:8000/*"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"]
+}

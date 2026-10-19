@@ -19,6 +19,10 @@ class AnalyzeJobRequest(BaseModel):
     page_title: str | None = Field(default=None, max_length=500)
     # Visible page text captured by the extension's content script.
     text: str = Field(min_length=1, max_length=100_000)
+    # BCP 47 tag for the report's free-text fields (rationales, notes, uncertainties).
+    language: str = Field(
+        default="en", max_length=20, pattern=r"^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+    )
 
 
 # --- Step 1: job posting extraction (LLM) ---

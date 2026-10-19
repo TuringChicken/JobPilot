@@ -47,7 +47,7 @@ def analyze_job(
     profile_data = CandidateProfileData(**profile.data)
 
     try:
-        evaluation = evaluator.evaluate(profile_data, prefs, job_data, job_text)
+        evaluation = evaluator.evaluate(profile_data, prefs, job_data, job_text, request.language)
     except LLMError as exc:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Match evaluation failed: {exc}") from exc
 

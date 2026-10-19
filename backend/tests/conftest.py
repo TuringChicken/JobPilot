@@ -117,9 +117,15 @@ class FakeMatchEvaluator:
         self.calls: list[dict] = []
         self.result = make_evaluation()
 
-    def evaluate(self, profile, preferences, job, job_text) -> MatchEvaluation:
+    def evaluate(self, profile, preferences, job, job_text, language="en") -> MatchEvaluation:
         self.calls.append(
-            {"profile": profile, "preferences": preferences, "job": job, "job_text": job_text}
+            {
+                "profile": profile,
+                "preferences": preferences,
+                "job": job,
+                "job_text": job_text,
+                "language": language,
+            }
         )
         return self.result
 
