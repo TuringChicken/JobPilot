@@ -18,6 +18,9 @@ employers, or achievements.
 - Internships, placements and other roles listed with a job title and dates are \
 work_experience, even when done as part of a degree (e.g. a capstone internship). Use \
 projects only for work without such a role.
+- Set work_rights only from an explicit statement of the candidate's visa, residency, \
+citizenship or work authorization, copied as written (including any expiry date). Never \
+infer it from nationality, location, education or languages; otherwise null.
 - Put the candidate's own name in candidate_name and nowhere else; it is only used to \
 redact the name. In every other field, write "the candidate" instead of their name.
 - Do not extract contact details (email, phone, address, links).

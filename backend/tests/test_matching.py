@@ -14,6 +14,7 @@ from tests.conftest import SAMPLE_JOB_TEXT, make_evaluation, make_job_data
 
 PROFILE = CandidateProfileData(
     summary="Python developer building REST APIs",
+    work_rights=None,
     education=[],
     skills=[Skill(name="FastAPI", category=None, proficiency=None)],
     certifications=[],

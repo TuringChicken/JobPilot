@@ -106,6 +106,8 @@ export const zhCN = {
     invalidJson: "JSON 格式有误，请检查引号、逗号和括号。",
     none: "（无）",
     summary: "概要",
+    workRights: "签证 / 工作权利",
+    workRightsMissing: "简历中未写明。可点击“编辑”在 work_rights 中补充。",
     work: "工作经历",
     projects: "项目",
     techStack: (s: string) => `技术栈：${s}`,

@@ -35,6 +35,7 @@ class FakeResumeParser:
         self.calls.append(resume_text)
         return CandidateProfileData(
             summary="Python developer",
+            work_rights=None,
             education=[],
             skills=[Skill(name="Python", category="language", proficiency=None)],
             certifications=[],

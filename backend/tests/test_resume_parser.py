@@ -9,6 +9,7 @@ from app.services.resume_parser import INSTRUCTIONS, LLMResumeParser, redact_nam
 def make_profile(**overrides) -> CandidateProfileData:
     fields = dict(
         summary=None,
+        work_rights=None,
         education=[],
         skills=[],
         certifications=[],
@@ -63,11 +64,11 @@ def test_parser_drops_candidate_name_and_redacts_it():
     assert data.projects[0].description == "Team project where the candidate owned the pipeline."
 
 
-def test_parser_asks_for_name_internships_languages_and_awards():
+def test_parser_asks_for_name_internships_languages_awards_and_work_rights():
     _, completions = parse_with(llm_output())
     system = completions.kwargs["messages"][0]["content"]
     assert system.startswith(INSTRUCTIONS)
-    for field in ("candidate_name", "languages", "awards"):
+    for field in ("candidate_name", "languages", "awards", "work_rights"):
         assert f'"{field}"' in system
     assert "Internships" in INSTRUCTIONS
 
@@ -82,6 +83,11 @@ def test_parser_keeps_languages_and_awards():
     )
     assert data.languages == [Language(name="English", proficiency="IELTS 6.5")]
     assert data.awards == [Award(title="National Second Prize", issuer=None, date=None)]
+
+
+def test_parser_keeps_work_rights():
+    data, _ = parse_with(llm_output(work_rights="Post Study Work Visa, valid until Mar 2027"))
+    assert data.work_rights == "Post Study Work Visa, valid until Mar 2027"
 
 
 # --- redact_name ---

@@ -49,7 +49,7 @@ class StructuredLLM:
                 parsed = self._parse_json_object(instructions, content, schema, kwargs)
         except (OpenAIError, ValidationError) as exc:
             # Log the error type only; messages may echo prompt content (resume/JD text).
-            logger.warning("LLM call failed: %s", type(exc).__name__)
+            logger.warning("LLM call failed: %s%s", type(exc).__name__, _error_locations(exc))
             raise LLMError(f"LLM call failed ({type(exc).__name__}).") from exc
 
         if parsed is None:
@@ -81,6 +81,16 @@ class StructuredLLM:
         )
         text = completion.choices[0].message.content
         return schema.model_validate_json(text) if text else None
+
+
+def _error_locations(exc: Exception) -> str:
+    """Field paths and error types of a ValidationError, without the offending values."""
+    if not isinstance(exc, ValidationError):
+        return ""
+    errors = exc.errors(include_input=False, include_context=False, include_url=False)
+    return " " + ", ".join(
+        f"{'.'.join(map(str, e['loc'])) or '<root>'} ({e['type']})" for e in errors[:10]
+    )
 
 
 def _messages(system: str, user: str) -> list[dict[str, str]]:

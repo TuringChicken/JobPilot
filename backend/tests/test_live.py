@@ -47,6 +47,7 @@ RESUME_LINES = [
     "English (professional), Mandarin (native)",
     "Awards",
     "Dean's List, University of Auckland, 2024",
+    "Work rights: Post Study Work Visa (open), valid until Mar 2027",
 ]
 
 JOB_TEXT = (
@@ -142,6 +143,7 @@ def test_resume_upload_and_parse(live_client):
 
     assert {lang["name"].casefold() for lang in data["languages"]} >= {"english", "mandarin"}
     assert data["awards"]
+    assert "post study work visa" in (data["work_rights"] or "").casefold()
 
 
 def test_analyze_job(live_client):

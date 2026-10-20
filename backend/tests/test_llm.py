@@ -94,6 +94,14 @@ def test_json_mode_rejects_invalid_output(content):
         llm.parse("sys", "user", Answer)
 
 
+def test_json_mode_logs_failing_fields_without_values(caplog):
+    llm, _ = fake_llm(json_schema_mode=False, content='{"value": ["Secret Resume Text"]}')
+    with pytest.raises(LLMError):
+        llm.parse("sys", "user", Answer)
+    assert "value (string_type)" in caplog.text
+    assert "Secret Resume Text" not in caplog.text
+
+
 # --- provider selection ---
 
 

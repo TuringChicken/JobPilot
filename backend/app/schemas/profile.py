@@ -60,6 +60,10 @@ class Project(BaseModel):
 
 class CandidateProfileData(BaseModel):
     summary: str | None
+    work_rights: str | None = Field(
+        description="Visa/residency/citizenship status as written, e.g. 'Post Study Work Visa "
+        "(valid until 2027)'; null unless the resume states it"
+    )
     education: list[Education]
     skills: list[Skill]
     certifications: list[Certification]

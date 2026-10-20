@@ -226,6 +226,15 @@ function ProfileDetails({ data }: { data: CandidateProfileData }) {
         </section>
       )}
 
+      <section>
+        <h3>{t.profile.workRights}</h3>
+        {data.work_rights ? (
+          <p>{data.work_rights}</p>
+        ) : (
+          <p className="muted small">{t.profile.workRightsMissing}</p>
+        )}
+      </section>
+
       <Section title={t.profile.work} count={data.work_experience.length}>
         <ul className="entries">
           {data.work_experience.map((w, i) => (

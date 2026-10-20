@@ -113,6 +113,8 @@ export const en: Messages = {
     invalidJson: "Invalid JSON. Check quotes, commas and brackets.",
     none: "(none)",
     summary: "Summary",
+    workRights: "Visa / work rights",
+    workRightsMissing: "Not stated in the resume. Use Edit to fill in work_rights.",
     work: "Work experience",
     projects: "Projects",
     techStack: (s: string) => `Tech stack: ${s}`,

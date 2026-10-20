@@ -38,6 +38,9 @@ missing_skills: posting skills the candidate lacks, with importance required/pre
 condition_checks: exactly one entry per must-have and per deal-breaker, condition copied \
 verbatim. status "unknown" when the posting does not say.
 uncertainties: important things the posting or profile leave unclear (e.g. work rights).
+Work rights: compare candidate_profile.work_rights with the posting's work_rights. If either is \
+missing, or they may not fit, add an uncertainty saying so. Never state that the candidate is \
+or is not eligible; that is for the employer or immigration authority to decide.
 """
 
 # Free text follows the user's language; anything checked against a source stays as written.

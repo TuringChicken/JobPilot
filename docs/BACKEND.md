@@ -108,7 +108,7 @@ flowchart TD
     I --> J["返回画像"]
 ```
 
-结构化画像（`CandidateProfileData`）包含：`summary`、`education`、`skills`、`certifications`、`languages`、`awards`、`work_experience`、`projects`。
+结构化画像（`CandidateProfileData`）包含：`summary`、`work_rights`（签证 / 工作权利，仅在简历明确写出时填写，原文照录）、`education`、`skills`、`certifications`、`languages`、`awards`、`work_experience`、`projects`。
 
 隐私与质量规则：
 
@@ -279,7 +279,7 @@ erDiagram
 ```
 
 - 业务数据都以 JSON 列存储，每次写入前先经过对应的 Pydantic 模型校验。
-- JSON 结构的变化（例如新增 `languages`、`awards`）也通过 Alembic 迁移回填旧数据。
+- JSON 结构的变化（例如新增 `languages`、`awards`、`work_rights`）也通过 Alembic 迁移回填旧数据。
 - 时间列使用 `UTCDateTime`：SQLite 不保存时区，读回后补上 UTC 标记。
 - `owner_id` 目前固定为 `local`；`jobs` 表不区分用户，供所有人共享缓存。
 

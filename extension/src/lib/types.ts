@@ -77,6 +77,7 @@ export interface MatchSummary {
 
 export interface CandidateProfileData {
   summary: string | null;
+  work_rights: string | null;
   education: {
     institution: string;
     degree: string | null;
