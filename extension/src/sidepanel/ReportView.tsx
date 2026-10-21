@@ -22,11 +22,14 @@ export function ReportView({
   match,
   onChange,
   onDeleted,
+  onReanalyze,
 }: {
   api: JobPilotApi;
   match: MatchOut;
   onChange: (match: MatchOut) => void;
   onDeleted: () => void;
+  /** Shows an "Analyze again" button; resolves once the new report is shown. */
+  onReanalyze?: () => Promise<void>;
 }) {
   const { t, locale } = useI18n();
   const { report, job } = match;
@@ -52,7 +55,13 @@ export function ReportView({
         <p className="muted small">{formatDate(locale, match.created_at)}</p>
       </header>
 
-      <ReportActions api={api} match={match} onChange={onChange} onDeleted={onDeleted} />
+      <ReportActions
+        api={api}
+        match={match}
+        onChange={onChange}
+        onDeleted={onDeleted}
+        onReanalyze={onReanalyze}
+      />
 
       <div className="score-row">
         <div className={`score ${scoreTone(report.overall_score)}`}>{report.overall_score}</div>
@@ -171,26 +180,33 @@ function EvidenceItem({ evidence }: { evidence: Evidence }) {
   );
 }
 
-type ActionStatus = { kind: "exported"; name: string } | { kind: "error"; error: unknown } | null;
+type ActionStatus =
+  | { kind: "exported"; name: string }
+  | { kind: "reanalyzing" }
+  | { kind: "reanalyzed" }
+  | { kind: "error"; error: unknown }
+  | null;
 
 function ReportActions({
   api,
   match,
   onChange,
   onDeleted,
+  onReanalyze,
 }: {
   api: JobPilotApi;
   match: MatchOut;
   onChange: (match: MatchOut) => void;
   onDeleted: () => void;
+  onReanalyze?: () => Promise<void>;
 }) {
   const { t, locale } = useI18n();
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<ActionStatus>(null);
 
-  async function act(action: () => Promise<void>) {
+  async function act(action: () => Promise<void>, pending: ActionStatus = null) {
     setBusy(true);
-    setStatus(null);
+    setStatus(pending);
     try {
       await action();
     } catch (error) {
@@ -199,6 +215,14 @@ function ReportActions({
       setBusy(false);
     }
   }
+
+  const reanalyze =
+    onReanalyze &&
+    (() =>
+      act(async () => {
+        await onReanalyze();
+        setStatus({ kind: "reanalyzed" });
+      }, { kind: "reanalyzing" }));
 
   const toggleSaved = () => act(async () => onChange(await api.setSaved(match.id, !match.saved)));
 
@@ -230,6 +254,11 @@ function ReportActions({
         <button onClick={exportMarkdown} disabled={busy}>
           {t.report.exportMarkdown}
         </button>
+        {reanalyze && (
+          <button onClick={reanalyze} disabled={busy} title={t.report.reanalyzeTitle}>
+            {status?.kind === "reanalyzing" ? t.report.reanalyzing : t.report.reanalyze}
+          </button>
+        )}
         <button className="danger" onClick={remove} disabled={busy}>
           {t.report.delete}
         </button>
@@ -237,6 +266,8 @@ function ReportActions({
       {status?.kind === "exported" && (
         <p className="hint">{t.report.exported(status.name)}</p>
       )}
+      {status?.kind === "reanalyzing" && <p className="hint">{t.report.reanalyzingHint}</p>}
+      {status?.kind === "reanalyzed" && <p className="hint">{t.report.reanalyzed}</p>}
       {status?.kind === "error" && (
         <div className="notice bad">{errorText(t, status.error, api.settings.baseUrl)}</div>
       )}

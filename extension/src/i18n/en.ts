@@ -27,7 +27,7 @@ export const en: Messages = {
 
   report: {
     untitled: "Untitled job",
-    formula: "Total = 0.35S + 0.25E + 0.20R + 0.20P",
+    formula: "Total = 0.35S + 0.25E + 0.30R + 0.10P",
     dimensions: {
       skills: "Skills S",
       experience: "Experience E",
@@ -66,6 +66,11 @@ export const en: Messages = {
     unsaveTitle: "Remove from saved",
     exportMarkdown: "Export Markdown",
     exported: (name: string) => `Saved: ${name}`,
+    reanalyze: "Analyze again",
+    reanalyzing: "Analyzing…",
+    reanalyzeTitle: "Evaluate this job again with your current resume and preferences; no need to reopen the job page",
+    reanalyzingHint: "Evaluating again with your current resume, about 30 seconds. The old report stays in History.",
+    reanalyzed: "Showing the new result. The old report is still in History.",
     delete: "Delete",
     deleteConfirm: "Delete this analysis? This can't be undone.",
   },

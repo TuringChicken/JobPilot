@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -11,6 +11,11 @@ from app.schemas.preferences import EmploymentType, ExperienceLevel, WorkArrange
 
 # --- Request ---
 
+# BCP 47 tag for the report's free-text fields (rationales, notes, uncertainties).
+ReportLanguage = Annotated[
+    str, Field(max_length=20, pattern=r"^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$")
+]
+
 
 class AnalyzeJobRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -19,10 +24,15 @@ class AnalyzeJobRequest(BaseModel):
     page_title: str | None = Field(default=None, max_length=500)
     # Visible page text captured by the extension's content script.
     text: str = Field(min_length=1, max_length=100_000)
-    # BCP 47 tag for the report's free-text fields (rationales, notes, uncertainties).
-    language: str = Field(
-        default="en", max_length=20, pattern=r"^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
-    )
+    language: ReportLanguage = "en"
+
+
+class ReanalyzeRequest(BaseModel):
+    """Re-run a past analysis on its stored job text with the current profile/preferences."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    language: ReportLanguage = "en"
 
 
 # --- Step 1: job posting extraction (LLM) ---

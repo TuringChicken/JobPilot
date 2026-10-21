@@ -42,7 +42,7 @@ flowchart LR
     R -->|match report| X
 ```
 
-The overall score is `0.35·Skills + 0.25·Experience + 0.20·Responsibilities + 0.20·Preferences`. These starting weights haven't been calibrated yet.
+The overall score is `0.35·Skills + 0.25·Experience + 0.30·Responsibilities + 0.10·Preferences`. These weights haven't been calibrated against labelled data yet.
 
 ## Privacy and safety
 

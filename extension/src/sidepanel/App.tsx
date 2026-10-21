@@ -28,6 +28,7 @@ export function App() {
   );
   const setAnalyzeBusy = useMemo(() => busySetter("analyze"), [busySetter]);
   const setProfileBusy = useMemo(() => busySetter("profile"), [busySetter]);
+  const setHistoryBusy = useMemo(() => busySetter("history"), [busySetter]);
 
   const refreshProfile = useCallback(async (s: Settings) => {
     try {
@@ -97,7 +98,7 @@ export function App() {
             />
           </div>
           <div hidden={tab !== "history"}>
-            <HistoryView api={api} active={tab === "history"} />
+            <HistoryView api={api} active={tab === "history"} onBusyChange={setHistoryBusy} />
           </div>
           <div hidden={tab !== "settings"}>
             <SettingsView

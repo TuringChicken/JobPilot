@@ -26,7 +26,7 @@ export const zhCN = {
 
   report: {
     untitled: "未命名岗位",
-    formula: "总分 = 0.35S + 0.25E + 0.20R + 0.20P",
+    formula: "总分 = 0.35S + 0.25E + 0.30R + 0.10P",
     dimensions: { skills: "技能 S", experience: "经验 E", responsibilities: "职责 R", preferences: "偏好 P" },
     unconfirmed: "简历解析结果尚未确认。",
     truncated: "页面文字过长，只分析了前面的部分。",
@@ -59,6 +59,11 @@ export const zhCN = {
     unsaveTitle: "取消收藏",
     exportMarkdown: "导出 Markdown",
     exported: (name: string) => `已保存：${name}`,
+    reanalyze: "再次分析",
+    reanalyzing: "分析中…",
+    reanalyzeTitle: "用当前简历和偏好重新评估这个岗位，无需回到岗位页面",
+    reanalyzingHint: "正在用当前简历重新评估，约 30 秒。旧报告会保留在历史中。",
+    reanalyzed: "已显示新的分析结果，旧报告仍保留在历史中。",
     delete: "删除",
     deleteConfirm: "确定删除这条分析记录？此操作无法撤销。",
   },

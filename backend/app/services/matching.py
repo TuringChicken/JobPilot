@@ -26,7 +26,7 @@ from app.schemas.preferences import JobPreferencesData
 from app.schemas.profile import CandidateProfileData
 
 # Initial weights from the design doc (section 6.2); to be calibrated on labelled samples.
-WEIGHTS = {"skills": 0.35, "experience": 0.25, "responsibilities": 0.20, "preferences": 0.20}
+WEIGHTS = {"skills": 0.35, "experience": 0.25, "responsibilities": 0.30, "preferences": 0.10}
 _STATUS_POINTS = {"pass": 100, "unknown": 50, "fail": 0}
 HOURS_PER_YEAR = 2080
 

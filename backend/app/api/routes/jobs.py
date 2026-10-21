@@ -4,11 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 
 from app.api.deps import DbSession, OwnerId, get_job_parser, get_match_evaluator
-from app.api.routes.matches import to_match_out
-from app.models import CandidateProfile, Job, JobPreferences, MatchResult
-from app.schemas.jobs import AnalyzeJobRequest, JobPostingData, MatchOut
-from app.schemas.preferences import JobPreferencesData
-from app.schemas.profile import CandidateProfileData
+from app.api.routes.matches import evaluate_and_store, load_candidate, to_match_out
+from app.models import Job
+from app.schemas.jobs import AnalyzeJobRequest, MatchOut
 from app.services.job_parser import (
     MIN_JOB_TEXT_CHARS,
     JobParser,
@@ -17,7 +15,6 @@ from app.services.job_parser import (
 )
 from app.services.llm import LLMError
 from app.services.match_evaluator import MatchEvaluator
-from app.services.matching import build_report
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -30,11 +27,7 @@ def analyze_job(
     job_parser: Annotated[JobParser, Depends(get_job_parser)],
     evaluator: Annotated[MatchEvaluator, Depends(get_match_evaluator)],
 ) -> MatchOut:
-    profile = db.scalar(select(CandidateProfile).where(CandidateProfile.owner_id == owner_id))
-    if profile is None:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Upload a resume before analyzing jobs.")
-    prefs_record = db.scalar(select(JobPreferences).where(JobPreferences.owner_id == owner_id))
-    prefs = JobPreferencesData(**prefs_record.data) if prefs_record else JobPreferencesData()
+    profile, prefs = load_candidate(db, owner_id)
 
     job_text, truncated = prepare_job_text(request.text)
     if len(job_text) < MIN_JOB_TEXT_CHARS:
@@ -43,26 +36,9 @@ def analyze_job(
         )
 
     job = _get_or_create_job(db, job_parser, job_text, request)
-    job_data = JobPostingData(**job.data)
-    profile_data = CandidateProfileData(**profile.data)
-
-    try:
-        evaluation = evaluator.evaluate(profile_data, prefs, job_data, job_text, request.language)
-    except LLMError as exc:
-        raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Match evaluation failed: {exc}") from exc
-
-    report = build_report(
-        profile_data, profile.confirmed, prefs, job_data, job_text, truncated, evaluation
+    match = evaluate_and_store(
+        db, owner_id, evaluator, profile, prefs, job, job_text, truncated, request.language
     )
-    match = MatchResult(
-        owner_id=owner_id,
-        job=job,
-        overall_score=report.overall_score,
-        hard_filter_status=report.hard_filter.status,
-        report=report.model_dump(mode="json"),
-    )
-    db.add(match)
-    db.commit()
     return to_match_out(match)
 
 

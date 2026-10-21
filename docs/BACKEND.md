@@ -203,7 +203,7 @@ flowchart TD
     E --> CL["S / E / R 截断到 0–100"]
     E --> VF["证据核验<br/>引用规范化后须出现在画像或 JD 原文中<br/>否则标记 verified: false"]
 
-    CL --> T["总分 = 0.35·S + 0.25·E + 0.20·R + 0.20·P"]
+    CL --> T["总分 = 0.35·S + 0.25·E + 0.30·R + 0.10·P"]
     PS --> T
     T --> RP["MatchReport<br/>总分 · 四维分数 · 硬性过滤 · 匹配/缺失技能<br/>不确定项 · 未核验引用数 · 画像是否已确认 · 是否截断"]
     S1 --> RP
@@ -227,6 +227,7 @@ flowchart TD
 
 - `GET /api/matches?limit=20&saved=true`：按时间倒序返回摘要（标题、公司、总分、硬性过滤状态、是否收藏）。`limit` 取值 1–100；`saved` 可选，`true` 只看收藏，`false` 只看未收藏，不传则全部。
 - `GET /api/matches/{id}`：返回完整报告。报告不存在和不属于当前用户都返回 404，避免通过 id 探测数据。
+- `POST /api/matches/{id}/reanalyze`：`{"language": "zh-CN"}`。用**当前**画像和偏好重新评估这条报告对应的岗位，使用库中保存的岗位文本和 JD 解析结果，不需要重新读取页面，只调用一次 LLM（匹配评估）。生成一条新报告，旧报告保留；`job_text_truncated` 沿用旧报告。修改简历后在插件"历史"中点"再次分析"即调用此接口。
 - `PATCH /api/matches/{id}`：`{"saved": true|false}` 收藏或取消收藏，只允许这一个字段。
 - `DELETE /api/matches/{id}`：删除单条报告，返回 204。
 - 每次分析都会自动保存（关闭插件侧边栏后仍可在历史中找回），收藏只是标记。

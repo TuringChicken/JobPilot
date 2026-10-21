@@ -162,8 +162,8 @@ def test_build_report_weighted_total_and_unverified_count():
     report = build_report(
         PROFILE, True, JobPreferencesData(), make_job_data(), SAMPLE_JOB_TEXT, False, evaluation
     )
-    # 0.35*80 + 0.25*60 + 0.20*70 + 0.20*100 = 77
-    assert report.overall_score == 77
+    # 0.35*80 + 0.25*60 + 0.30*70 + 0.10*100 = 74
+    assert report.overall_score == 74
     assert report.preferences.score == 100
     assert report.unverified_evidence_count == 1
     assert report.hard_filter.status == "pass"

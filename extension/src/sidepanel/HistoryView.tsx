@@ -8,12 +8,22 @@ import { ReportView } from "./ReportView";
 
 type Filter = "all" | "saved";
 
-export function HistoryView({ api, active }: { api: JobPilotApi; active: boolean }) {
+export function HistoryView({
+  api,
+  active,
+  onBusyChange,
+}: {
+  api: JobPilotApi;
+  active: boolean;
+  onBusyChange: (busy: boolean) => void;
+}) {
   const { t, locale } = useI18n();
   const [filter, setFilter] = useState<Filter>("all");
   const [items, setItems] = useState<MatchSummary[] | null>(null);
   const [selected, setSelected] = useState<MatchOut | null>(null);
   const [error, setError] = useState<unknown>(null);
+  const [reanalyzing, setReanalyzing] = useState(0);
+  useEffect(() => onBusyChange(reanalyzing > 0), [reanalyzing, onBusyChange]);
 
   // Reload whenever the tab is opened or the list is shown again, so changes show up.
   const showingList = active && selected === null;
@@ -34,6 +44,18 @@ export function HistoryView({ api, active }: { api: JobPilotApi; active: boolean
     }
   }
 
+  /** Same job, current resume/preferences; the new report replaces the one on screen. */
+  async function reanalyze(id: number) {
+    setReanalyzing((n) => n + 1);
+    try {
+      const match = await api.reanalyze(id, locale);
+      // Only if the user is still looking at the report it was started from.
+      setSelected((current) => (current?.id === id ? match : current));
+    } finally {
+      setReanalyzing((n) => n - 1);
+    }
+  }
+
   if (selected) {
     return (
       <section className="stack">
@@ -45,6 +67,7 @@ export function HistoryView({ api, active }: { api: JobPilotApi; active: boolean
           match={selected}
           onChange={setSelected}
           onDeleted={() => setSelected(null)}
+          onReanalyze={() => reanalyze(selected.id)}
         />
       </section>
     );

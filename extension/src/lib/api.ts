@@ -71,6 +71,17 @@ export class JobPilotApi {
     });
   }
 
+  /**
+   * Evaluates a past report's job again with the current resume and preferences, using the
+   * stored job text (no page needed). Returns a new report; the old one is kept.
+   */
+  reanalyze(id: number, language: string): Promise<MatchOut> {
+    return this.request(`/api/matches/${id}/reanalyze`, {
+      method: "POST",
+      body: JSON.stringify({ language }),
+    });
+  }
+
   /** `saved` filters to saved (true) or unsaved (false) reports; omit for all. */
   matches(options: { limit?: number; saved?: boolean } = {}): Promise<MatchSummary[]> {
     const params = new URLSearchParams({ limit: String(options.limit ?? 50) });
