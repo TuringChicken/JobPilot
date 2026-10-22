@@ -1,5 +1,18 @@
 # JobPilot AI 开发日志
 
+## 2026-10-23：GitHub Actions CI
+
+`.github/workflows/ci.yml`：push 到 `main`、PR 和手动触发时运行两个 job。
+
+| Job | 步骤 |
+|---|---|
+| backend | Python 3.13，`pip install -r requirements-dev.txt`，`ruff check`、`ruff format --check`、`pytest`（`live` 测试按 pyproject 默认排除） |
+| extension | Node 24，`npm ci`、`npm test`（vitest，含 i18n 键一致性检查）、`npm run build`（含 `tsc --noEmit`） |
+
+CI 不配置任何 LLM 凭据或 `.env`：测试使用 fake 和临时 sqlite，不需要密钥。
+
+另加 `.github/workflows/live.yml`：仅手动触发，可选 dashscope / azure，从 `live-llm` Environment 读取 secrets，运行 `pytest -m live -s`。缺凭据时直接失败而不是全部 skip。配置方法见 `BACKEND.md` 第 11 节。
+
 ## 2026-10-21：历史报告"再次分析"
 
 ### 背景
