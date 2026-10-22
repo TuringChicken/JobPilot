@@ -307,3 +307,21 @@ cp .env.example .env          # 填写 API_KEY、DASHSCOPE_API_KEY 等
 # 交互式文档：http://127.0.0.1:8000/docs
 .venv/bin/pytest              # 测试使用假 LLM，不访问外部 API
 ```
+
+## 11. CI（GitHub Actions）
+
+| Workflow | 触发 | 内容 |
+|---|---|---|
+| `ci.yml` | push 到 `main`、PR、手动 | ruff、pytest（假 LLM）、插件 vitest + build；不需要任何 secret |
+| `live.yml` | 仅手动（Actions → Live LLM smoke tests → Run workflow，选 provider） | `pytest -m live -s`，调用真实 LLM |
+
+`live.yml` 从名为 `live-llm` 的 Environment 读取配置（仓库 Settings → Environments → New environment）。建议在该 Environment 开启 Required reviewers，并在服务商控制台给 key 设额度上限。
+
+| 名称 | 类型 | 说明 |
+|---|---|---|
+| `DASHSCOPE_API_KEY` | Secret | provider=dashscope 时必填 |
+| `AZURE_OPENAI_API_KEY` | Secret | provider=azure 时必填 |
+| `AZURE_OPENAI_ENDPOINT`、`AZURE_OPENAI_CHAT_DEPLOYMENT` | Variable | provider=azure 时必填 |
+| `DASHSCOPE_BASE_URL`、`DASHSCOPE_MODEL`、`LLM_REASONING_EFFORT`、`LLM_TIMEOUT_SECONDS` | Variable | 可选，不设则用 `Settings` 默认值 |
+
+CI 中没有 `.env`，以上值作为环境变量传入。缺少所需凭据时 workflow 直接失败，避免 live 测试全部 skip 却显示通过。不要为了让 fork PR 运行 live 测试而改用 `pull_request_target`。
