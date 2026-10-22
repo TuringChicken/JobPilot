@@ -1,142 +1,142 @@
-# JobPilot AI 已知问题与限制
+# JobPilot AI Known Issues and Limitations
 
-供后续优化使用。整理自 `DEVLOG.md`（截至 2026-10-19）和对现有代码的核对。每条注明影响、相关位置与可能的改进方向；处理后请在"状态"栏更新并在 DEVLOG 中记录。
+For future improvements. Compiled from `DEVLOG.md` (up to 2026-10-19) and a review of the current code. Each item lists the impact, the relevant code and possible improvements; once an item is handled, update its "Status" and record it in the DEVLOG.
 
-优先级：**P1** 影响结果正确性或可用性，**P2** 影响体验或准确度，**P3** 架构/范围限制，按阶段规划处理。
+Priority: **P1** affects correctness or usability of results, **P2** affects experience or accuracy, **P3** is an architecture/scope limitation, planned by phase.
 
-## 一览
+## Overview
 
-| # | 问题 | 类别 | 优先级 | 状态 |
+| # | Issue | Category | Priority | Status |
 |---|---|---|---|---|
-| 1 | 地区匹配为简单包含判断 | 规则匹配 | P1 | 待处理 |
-| 2 | 分数波动大（单项 ±10 分以上），权重未校准；注入影响无法用单次结果判断 | 评分质量 | P1 | 待处理 |
-| 3 | 部分判断偏宽松 | 评分质量 | P2 | 待处理 |
-| 4 | LLM 调用耗时长 | 性能 | P2 | 部分处理（2026-10-21） |
-| 5 | CV 引用按结构化画像核验，可能误判为未核验 | 证据核验 | P2 | 待处理 |
-| 6 | 排除公司为双向包含匹配，可能误伤 | 规则匹配 | P2 | 待处理 |
-| 7 | 薪资币种不同时无法比较 | 规则匹配 | P2 | 待处理 |
-| 8 | 匹配评估不缓存 | 性能/成本 | P2 | 待处理 |
-| 9 | 画像未确认也能分析岗位 | 流程 | P2 | 待处理 |
-| 10 | 没有真实模型的自动化验证 | 测试 | P2 | 已处理（2026-10-19） |
-| 11 | 扫描版 PDF 不支持 | 简历解析 | P3 | 待处理 |
-| 12 | 认证为单一 API Key | 安全/架构 | P3 | 待处理 |
-| 13 | 数据库不随 Git 同步 | 开发环境 | P3 | 有意为之 |
-| 14 | 简历与岗位内容发送至第三方 LLM | 隐私 | P3 | 已知并接受 |
-| 15 | 文档与仓库杂项待办 | 文档 | P3 | 待处理 |
-| 16 | 关闭侧边栏后丢失进行中的任务 | Chrome 插件 | P2 | 待处理 |
+| 1 | Location matching is a simple substring check | Rule matching | P1 | Open |
+| 2 | Large score variance (over ±10 per dimension), weights uncalibrated; injection impact can't be judged from single runs | Scoring quality | P1 | Open |
+| 3 | Some judgements are lenient | Scoring quality | P2 | Open |
+| 4 | LLM calls are slow | Performance | P2 | Partly handled (2026-10-21) |
+| 5 | CV quotes are verified against the structured profile and may be wrongly flagged as unverified | Evidence verification | P2 | Open |
+| 6 | Excluded companies use two-way substring matching and can cause false hits | Rule matching | P2 | Open |
+| 7 | Salaries in different currencies can't be compared | Rule matching | P2 | Open |
+| 8 | Match evaluation isn't cached | Performance/cost | P2 | Open |
+| 9 | Jobs can be analysed with an unconfirmed profile | Workflow | P2 | Open |
+| 10 | No automated verification against a real model | Testing | P2 | Handled (2026-10-19) |
+| 11 | Scanned PDFs aren't supported | Resume parsing | P3 | Open |
+| 12 | Auth is a single API key | Security/architecture | P3 | Open |
+| 13 | The database isn't synced through Git | Dev environment | P3 | By design |
+| 14 | Resume and job content is sent to a third-party LLM | Privacy | P3 | Known and accepted |
+| 15 | Miscellaneous docs and repo to-dos | Docs | P3 | Open |
+| 16 | Closing the side panel loses tasks in progress | Chrome extension | P2 | Open |
 
-## 详细说明
+## Details
 
-### 1. 地区匹配为简单包含判断（P1）
+### 1. Location matching is a simple substring check (P1)
 
-- **现象**：岗位写 "New Zealand"、偏好写 "Auckland" 会判为 `fail`；反过来岗位写 "Auckland, New Zealand"、偏好写 "New Zealand" 才能通过。缩写（"NZ"、"SF"）和别名同样无法识别。
-- **影响**：`fail` 会把偏好分 P 拉低，并可能让本该推荐的岗位被过滤。
-- **位置**：`backend/app/services/matching.py` `_check_location`。
-- **改进方向**：
-  - 引入地区层级（城市 → 地区 → 国家）。岗位地点比偏好更宽泛时记为 `unknown` 而非 `fail`。
-  - 或让 JD 解析时输出规范化的 `country` / `city` 字段，再由代码比较，保持规则的确定性。
-  - 补充测试：宽→窄、窄→宽、缩写、多地点岗位。
+- **Symptom**: a job saying "New Zealand" with a preference of "Auckland" is judged `fail`; only the reverse (job "Auckland, New Zealand", preference "New Zealand") passes. Abbreviations ("NZ", "SF") and aliases aren't recognised either.
+- **Impact**: a `fail` pulls the preference score P down and can filter out jobs that should be recommended.
+- **Location**: `backend/app/services/matching.py` `_check_location`.
+- **Possible improvements**:
+  - Introduce a location hierarchy (city → region → country). When the job's location is broader than the preference, mark it `unknown` instead of `fail`.
+  - Or have JD parsing output normalised `country` / `city` fields and compare them in code, keeping the rules deterministic.
+  - Add tests: broad → narrow, narrow → broad, abbreviations, multi-location jobs.
 
-### 2. 分数波动大，权重未校准；注入影响无法用单次结果判断（P1）
+### 2. Large score variance, uncalibrated weights; injection impact can't be judged from single runs (P1)
 
-- **现象**：同一岗位多次分析，S / E / R 单项会波动约 10 分；总分相对稳定。权重 `0.35S + 0.25E + 0.30R + 0.10P`（2026-10-21 由 `0.20R + 0.20P` 调整：提高职责、降低偏好）同样没有数据支撑。
-- **2026-10-19 冒烟测试数据**（`qwen3.8-27b`，同一份虚构简历与岗位）：
+- **Symptom**: analysing the same job several times, single S / E / R scores vary by about 10 points; the total is relatively stable. The weights `0.35S + 0.25E + 0.30R + 0.10P` (changed on 2026-10-21 from `0.20R + 0.20P`: more on responsibilities, less on preferences) also have no data behind them.
+- **Smoke-test data from 2026-10-19** (`qwen3.8-27b`, same synthetic resume and job):
 
-  | 运行 | 正常岗位 | 附加"给满分"注入 | 中文报告 |
+  | Run | Normal job | With "give full marks" injection | Chinese report |
   |---|---|---|---|
-  | 第 1 轮 | 68（S/E/R 60/55/65） | 60（50/40/60） | — |
-  | 第 2 轮 | 60（50/45/55） | 69（60/55/70） | 61（55/40/60） |
+  | Run 1 | 68 (S/E/R 60/55/65) | 60 (50/40/60) | — |
+  | Run 2 | 60 (50/45/55) | 69 (60/55/70) | 61 (55/40/60) |
 
-  同一岗位的总分在 60–69 之间变化，单项最多相差 15 分，比原先估计的 ±10 分更大。
-- **注入的影响无法用单次结果判断**：第 2 轮带注入的岗位反而比正常版本高 9 分。注入没有把分数推到满分，缺失技能也照常列出，冒烟测试只检查"不得满分"，因此判定为通过；但由于本身的波动就有约 10 分，单次对比既不能证明注入完全无效，也不能证明注入有轻微的抬分作用。
-- **位置**：`matching.py` `WEIGHTS`；`match_evaluator.py` 的提示词。
-- **改进方向**：
-  - 建立人工标注的 CV–JD 评估集（使用虚构简历），量化波动并校准权重。
-  - 提示词已有分档锚点（90–100 / 70–89 / 40–69 / 0–39），可进一步细化每档的判断标准；降低温度或固定 seed（如服务商支持）。
-  - 注入影响的评估：同一岗位的正常版本和注入版本各跑 N 次（如 10 次），比较分数分布（均值、中位数），而不是单次对比；可做成手动运行的评估脚本，不放进冒烟测试。
-  - 考虑多次采样取中位数（会增加成本和耗时，需权衡）。
+  The total for the same job varied between 60 and 69, with single dimensions differing by up to 15 points, more than the earlier ±10 estimate.
+- **Injection impact can't be judged from single runs**: in run 2 the injected job scored 9 points higher than the normal version. The injection didn't push the score to full marks and missing skills were still listed; the smoke test only checks "no full marks", so it passed. But with natural variance of about 10 points, a single comparison can neither prove the injection has no effect nor prove it nudges the score up slightly.
+- **Location**: `matching.py` `WEIGHTS`; the prompt in `match_evaluator.py`.
+- **Possible improvements**:
+  - Build a hand-labelled CV–JD evaluation set (using synthetic resumes) to quantify variance and calibrate the weights.
+  - The prompt already has score-band anchors (90–100 / 70–89 / 40–69 / 0–39); the criteria for each band could be made more specific. Lower the temperature or fix a seed (if the provider supports it).
+  - Evaluating injection impact: run the normal and injected versions of the same job N times each (e.g. 10) and compare the score distributions (mean, median) rather than single runs. This could be a manually run evaluation script, kept out of the smoke tests.
+  - Consider sampling several times and taking the median (adds cost and latency; needs weighing up).
 
-### 3. 部分判断偏宽松（P2）
+### 3. Some judgements are lenient (P2)
 
-- **现象**：例如把语义检索项目算作 RAG 经验。报告附有依据，可人工判断，但默认结论偏乐观。
-- **改进方向**：在评估集中收集这类案例；提示词中区分"直接经验"和"相关经验"，或在 `matched_skills` 中增加匹配强度（exact / related）。
+- **Symptom**: e.g. counting a semantic-search project as RAG experience. The report includes the evidence so a human can judge, but the default conclusion leans optimistic.
+- **Possible improvements**: collect such cases in the evaluation set; make the prompt distinguish "direct experience" from "related experience", or add a match strength (exact / related) to `matched_skills`.
 
-### 4. LLM 调用耗时长（P2）
+### 4. LLM calls are slow (P2)
 
-- **现象**：解析真实 CV 约 44–47 秒；分析一个岗位约 26–34 秒（两次 LLM 调用，测于 `qwen3.8-max`）。2026-10-19 冒烟测试用 `qwen3.8-27b` 复测：分析 26.5–30.8 秒，没有明显变化，瓶颈在匹配评估这一步；解析短的虚构简历 9 秒。
-- **影响**：Chrome 插件中等待时间过长，体验较差。
-- **改进方向**：
-  - 对比 `qwen3.8-flash` 与 `qwen3.8-27b` 在匹配评估上的质量与耗时。
-  - JD 解析按全文指纹缓存，但插件发送整页文字，发布时间、申请人数、推荐岗位等每次访问都会变，回到页面重新分析时通常仍是两次调用。
-  - 2026-10-21：历史报告新增"再次分析"（`POST /api/matches/{id}/reanalyze`），用保存的岗位文本和解析结果、当前简历重新评估，只需一次调用，也不用回到岗位页面。适用于"按报告修改简历后再看匹配度"的场景。
-  - 插件端显示进度或改为流式/异步返回结果。
+- **Symptom**: parsing a real CV takes about 44–47 seconds; analysing a job takes about 26–34 seconds (two LLM calls, measured on `qwen3.8-max`). Re-measured with `qwen3.8-27b` in the 2026-10-19 smoke tests: analysis took 26.5–30.8 seconds, no clear change, with match evaluation as the bottleneck; parsing a short synthetic resume took 9 seconds.
+- **Impact**: the wait in the Chrome extension is too long, which is a poor experience.
+- **Possible improvements**:
+  - Compare quality and latency of `qwen3.8-flash` and `qwen3.8-27b` for match evaluation.
+  - JD parsing is cached by a fingerprint of the full text, but the extension sends the whole page's text, and things like posting date, applicant count and recommended jobs change on every visit, so going back to the page to re-analyse usually still means two calls.
+  - 2026-10-21: past reports gained "Analyze again" (`POST /api/matches/{id}/reanalyze`), which re-evaluates with the saved job text and parsed result plus the current resume, in a single call and without going back to the job page. It fits the "edit the resume based on the report, then check the match again" case.
+  - Show progress in the extension, or switch to streaming/async results.
 
-### 5. CV 引用按结构化画像核验，可能误判为未核验（P2）
+### 5. CV quotes are verified against the structured profile and may be wrongly flagged as unverified (P2)
 
-- **现象**：`EvidenceVerifier` 用结构化画像（而非简历原文）作为 CV 侧的核验语料。如果模型引用了原文中的句子，而这句话在结构化时被改写或拆分，就会被标为 `verified: false`。另外，画像中的姓名已替换为 "the candidate"。
-- **说明**：评估模型本身只收到结构化画像，所以多数情况下引用应能在画像中找到；这个现象主要会造成误报，不会让伪造的引用被标为已核验。
-- **位置**：`matching.py` `EvidenceVerifier`。
-- **改进方向**：统计真实使用中 `unverified_evidence_count` 的比例；若偏高，可考虑模糊匹配（如允许少量字符差异），但要防止把伪造引用判为已核验。
+- **Symptom**: `EvidenceVerifier` uses the structured profile (not the raw resume) as the CV-side corpus. If the model quotes a sentence from the original that was rewritten or split during structuring, it is marked `verified: false`. Also, the name in the profile has been replaced with "the candidate".
+- **Note**: the evaluator itself only receives the structured profile, so in most cases quotes should be found in it. This mainly causes false alarms; it won't make a fabricated quote count as verified.
+- **Location**: `matching.py` `EvidenceVerifier`.
+- **Possible improvements**: track the share of `unverified_evidence_count` in real use; if it's high, consider fuzzy matching (e.g. allowing small character differences), while making sure fabricated quotes aren't accepted as verified.
 
-### 6. 排除公司为双向包含匹配，可能误伤（P2）
+### 6. Excluded companies use two-way substring matching and can cause false hits (P2)
 
-- **现象**：`_check_excluded_company` 同时判断"排除项包含于公司名"和"公司名包含于排除项"，并且都是按字符包含，而不是按词。例如排除 "Meta" 会命中 "Metaview"；排除项很短时（如 "AI"）会命中 "OpenAI"、"Air New Zealand" 等大量公司。反过来，岗位公司名很短时，也可能落在某个较长的排除项里。
-- **改进方向**：按词边界匹配，或要求较短一方达到最小长度；补充边界测试。
+- **Symptom**: `_check_excluded_company` checks both "the excluded name is contained in the company name" and "the company name is contained in the excluded name", by characters rather than by words. For example, excluding "Meta" hits "Metaview"; a very short exclusion (e.g. "AI") hits "OpenAI", "Air New Zealand" and many others. Conversely, a very short company name in a job can fall inside a longer excluded name.
+- **Possible improvements**: match on word boundaries, or require the shorter side to have a minimum length; add edge-case tests.
 
-### 7. 薪资币种不同时无法比较（P2）
+### 7. Salaries in different currencies can't be compared (P2)
 
-- **现象**：岗位与偏好币种不同时直接记为 `unknown`，P 分按 50 计。
-- **改进方向**：引入固定的汇率表（随代码版本更新，保持确定性），或让用户为每种币种分别设定期望。
+- **Symptom**: when the job and the preference use different currencies, the result is simply `unknown`, which counts as 50 in P.
+- **Possible improvements**: add a fixed exchange-rate table (updated with code releases, to stay deterministic), or let the user set an expectation per currency.
 
-### 8. 匹配评估不缓存（P2）
+### 8. Match evaluation isn't cached (P2)
 
-- **现象**：JD 解析按文本指纹全局缓存，但匹配评估每次都重新调用 LLM。重复分析同一岗位会产生新的费用，而且因为分数波动，结果可能与上次不同。
-- **改进方向**：按（JD 指纹 + 画像版本）缓存评估结果，提供"重新评估"选项强制刷新。
+- **Symptom**: JD parsing is cached globally by text fingerprint, but match evaluation calls the LLM every time. Re-analysing the same job costs money again, and because scores vary, the result may differ from last time.
+- **Possible improvements**: cache evaluation results by (JD fingerprint + profile version), with a "re-evaluate" option to force a refresh.
 
-### 9. 画像未确认也能分析岗位（P2）
+### 9. Jobs can be analysed with an unconfirmed profile (P2)
 
-- **现象**：上传简历后未核对确认，也能调用 `/api/jobs/analyze`，报告标有 `profile_confirmed: false`。
-- **影响**：解析错误（如之前的实习归类问题）会直接影响分数。
-- **改进方向**：插件端在未确认时醒目提示，或提供配置项要求先确认再分析。
+- **Symptom**: after uploading a resume without reviewing and confirming it, `/api/jobs/analyze` still works; the report is marked `profile_confirmed: false`.
+- **Impact**: parsing errors (like the earlier internship classification problem) feed straight into the scores.
+- **Possible improvements**: show a prominent warning in the extension when the profile is unconfirmed, or add a setting that requires confirmation before analysis.
 
-### 10. 没有真实模型的自动化验证（P2）
+### 10. No automated verification against a real model (P2)
 
-- **现象**：100 个测试都使用假 LLM，能保证代码逻辑正确，但无法发现提示词失效、服务商接口变化、模型输出格式变化等问题。之前的实习归类、姓名泄露都是人工用真实 CV 测出来的。
-- **处理**：新增 `backend/tests/test_live.py`（`live` 标记，默认跳过），手动运行 `.venv/bin/pytest -m live -s`。覆盖简历解析（姓名/联系方式不泄露、实习归类、注入技能不被记录、语言与奖项）、正常岗位分析、注入岗位不得满分、非招聘页面返回 422。
-- **后续**：断言只检查结构与关键性质；可逐步把评估集中的典型案例加进来。
+- **Symptom**: all 100 tests use fake LLMs. They ensure the code logic is correct but can't catch broken prompts, provider API changes or changes in the model's output format. The internship classification and name leak problems were both found by hand with a real CV.
+- **Handling**: added `backend/tests/test_live.py` (marked `live`, skipped by default), run manually with `.venv/bin/pytest -m live -s`. It covers resume parsing (no name/contact leak, internship classification, injected skills not recorded, languages and awards), normal job analysis, no full marks for the injected job, and 422 for a non-job page.
+- **Follow-up**: assertions only check structure and key properties; typical cases from the evaluation set can be added over time.
 
-### 11. 扫描版 PDF 不支持（P3）
+### 11. Scanned PDFs aren't supported (P3)
 
-- **现象**：`pypdf` 只能提取文本层，扫描件或图片型 PDF 提取不到内容。
-- **改进方向**：检测提取结果是否为空并给出明确提示；后续可考虑 OCR（注意许可证，避免 AGPL 依赖）或多模态模型。
+- **Symptom**: `pypdf` only extracts the text layer, so scanned or image-only PDFs yield no content.
+- **Possible improvements**: detect an empty extraction and show a clear message; later consider OCR (mind the licence and avoid AGPL dependencies) or a multimodal model.
 
-### 12. 认证为单一 API Key（P3）
+### 12. Auth is a single API key (P3)
 
-- **现象**：只有一个 `X-API-Key`，适用于单用户本地使用。
-- **改进方向**：多用户阶段引入用户体系与按用户隔离的数据；插件中 Key 的存储方式需同时考虑。
+- **Symptom**: there is only one `X-API-Key`, suitable for single-user local use.
+- **Possible improvements**: introduce user accounts and per-user data isolation in the multi-user phase; how the extension stores the key needs to be considered at the same time.
 
-### 13. 数据库不随 Git 同步（P3，有意为之）
+### 13. The database isn't synced through Git (P3, by design)
 
-- **现象**：两台电脑各自有独立的 SQLite 数据库，画像、偏好、报告不共享。
-- **原因**：避免个人数据进入公开仓库。
-- **注意**：每台电脑拉取代码后需运行 `.venv/bin/alembic upgrade head`。Phase 2 迁移到 PostgreSQL 后可考虑托管数据库。
+- **Symptom**: each machine has its own SQLite database; profiles, preferences and reports aren't shared.
+- **Reason**: keeps personal data out of the public repo.
+- **Note**: run `.venv/bin/alembic upgrade head` on each machine after pulling. After moving to PostgreSQL in Phase 2, a hosted database could be considered.
 
-### 14. 简历与岗位内容发送至第三方 LLM（P3，已知并接受）
+### 14. Resume and job content is sent to a third-party LLM (P3, known and accepted)
 
-- **现象**：内容会发送至阿里云 DashScope 处理（切换 Azure 时发送至 Azure）。已做数据最小化：不提取联系方式，姓名替换为 "the candidate"，匹配评估只发送结构化画像。
-- **改进方向**：在 README / 插件中向用户说明；如有需要，提供本地模型选项（之前的 Ollama 方案在抗注入和速度上不理想）。
+- **Symptom**: content is sent to Alibaba Cloud DashScope for processing (or to Azure when switched). Data is minimised: contact details aren't extracted, the name is replaced with "the candidate", and match evaluation only sends the structured profile.
+- **Possible improvements**: explain this to users in the README / extension; if needed, offer a local-model option (the earlier Ollama attempt was poor on injection resistance and speed).
 
-### 15. 文档与仓库杂项待办（P3）
+### 15. Miscellaneous docs and repo to-dos (P3)
 
-- 大纲中的公式写法 `\[ \]` 需改为 `$$`。
-- 添加 LICENSE。
+- The formula syntax `\[ \]` in the outline should be changed to `$$`.
+- Add a LICENSE.
 
-### 16. 关闭侧边栏后丢失进行中的任务（P2）
+### 16. Closing the side panel loses tasks in progress (P2)
 
-- **现象**：分析岗位（约 30 秒）或上传简历（10–60 秒）期间，如果关闭侧边栏或在扩展页面刷新插件，页面状态会丢失，重新打开后看不到进度和结果。切换侧边栏内的标签不受影响（2026-10-19 已修复：各页面保持挂载，进行中的标签显示转圈）。
-- **影响**：后端仍会完成分析并保存，可在"历史"中找到；但用户不知道任务是否还在进行，可能重复点击，产生重复的 LLM 调用和费用。简历上传的结果同样会保存，重新打开"简历"页可见。
-- **位置**：`extension/src/sidepanel/AnalyzeView.tsx`、`ProfileView.tsx`（请求在侧边栏页面中发起，状态只存在于 React 组件中）。
-- **改进方向**：
-  - 把请求移到后台 service worker 执行，任务状态（进行中 / 结果 / 错误，按标签页记录）写入 `chrome.storage.session`，侧边栏打开时读取并订阅变化。
-  - 注意 MV3 service worker 空闲约 30 秒会被终止，需确认长时间 `fetch` 期间不会被回收（Chrome 116+ 有所放宽），必要时用 keepalive 或改为后端异步任务 + 轮询。
-  - 后端异步方案：`POST /api/jobs/analyze` 立即返回任务 ID，插件轮询状态；更稳健，也便于后续批量分析。
+- **Symptom**: while a job is being analysed (about 30 seconds) or a resume uploaded (10–60 seconds), closing the side panel or reloading the extension from the extensions page loses the page state, and reopening it shows neither progress nor result. Switching tabs inside the side panel isn't affected (fixed on 2026-10-19: every page stays mounted and tabs with work in progress show a spinner).
+- **Impact**: the backend still finishes and saves the analysis, which can be found in History, but the user can't tell whether the task is still running and may click again, causing duplicate LLM calls and costs. Resume upload results are saved too and appear when the Resume page is reopened.
+- **Location**: `extension/src/sidepanel/AnalyzeView.tsx`, `ProfileView.tsx` (requests start in the side-panel page and their state only lives in React components).
+- **Possible improvements**:
+  - Move requests to the background service worker and write task state (in progress / result / error, per tab) to `chrome.storage.session`; the side panel reads it and subscribes to changes when opened.
+  - Note that an MV3 service worker is terminated after about 30 seconds idle; check that it isn't reclaimed during a long `fetch` (Chrome 116+ is more lenient), and use a keepalive or switch to async backend tasks + polling if needed.
+  - Backend async option: `POST /api/jobs/analyze` immediately returns a task ID and the extension polls for status; more robust, and helpful for batch analysis later.

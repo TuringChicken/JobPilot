@@ -1,292 +1,292 @@
-# JobPilot AI 开发日志
+# JobPilot AI Dev Log
 
-## 2026-10-23：GitHub Actions CI
+## 2026-10-23: GitHub Actions CI
 
-`.github/workflows/ci.yml`：push 到 `main`、PR 和手动触发时运行两个 job。
+`.github/workflows/ci.yml` runs two jobs on pushes to `main`, on PRs and on manual dispatch.
 
-| Job | 步骤 |
+| Job | Steps |
 |---|---|
-| backend | Python 3.13，`pip install -r requirements-dev.txt`，`ruff check`、`ruff format --check`、`pytest`（`live` 测试按 pyproject 默认排除） |
-| extension | Node 24，`npm ci`、`npm test`（vitest，含 i18n 键一致性检查）、`npm run build`（含 `tsc --noEmit`） |
+| backend | Python 3.13, `pip install -r requirements-dev.txt`, `ruff check`, `ruff format --check`, `pytest` (`live` tests excluded by the pyproject default) |
+| extension | Node 24, `npm ci`, `npm test` (vitest, including the i18n key-consistency check), `npm run build` (including `tsc --noEmit`) |
 
-CI 不配置任何 LLM 凭据或 `.env`：测试使用 fake 和临时 sqlite，不需要密钥。
+CI configures no LLM credentials and no `.env`: the tests use fakes and a temporary SQLite database, so no secrets are needed.
 
-另加 `.github/workflows/live.yml`：仅手动触发，可选 dashscope / azure，从 `live-llm` Environment 读取 secrets，运行 `pytest -m live -s`。缺凭据时直接失败而不是全部 skip。配置方法见 `BACKEND.md` 第 11 节。
+Also added `.github/workflows/live.yml`: manual dispatch only, choice of dashscope / azure, reads secrets from the `live-llm` Environment and runs `pytest -m live -s`. When credentials are missing it fails instead of skipping everything. Setup is described in section 11 of `BACKEND.md`.
 
-## 2026-10-21：历史报告"再次分析"
+## 2026-10-21: "Analyze again" for past reports
 
-### 背景
+### Background
 
-按第一次的分析结果修改简历后，想看新简历的匹配度，原先要回到岗位页面重新读取、重新分析。而且插件发送整页文字，页面上的动态内容一变，JD 解析缓存（按全文指纹）就不命中，又是两次 LLM 调用。
+After editing the resume based on a first analysis, seeing how the new resume matched meant going back to the job page, reading it again and re-analysing. And because the extension sends the whole page's text, any change in the page's dynamic content made the JD parsing cache (keyed on a fingerprint of the full text) miss, which meant two LLM calls again.
 
-### 成果
+### Results
 
-| 事项 | 说明 |
+| Item | Details |
 |---|---|
-| `POST /api/matches/{id}/reanalyze` | 用保存的岗位文本和 JD 解析结果 + 当前画像/偏好重新评估，只调用一次 LLM；生成新报告，旧报告保留 |
-| 代码整理 | 读取画像/偏好、评估并保存报告的逻辑移到 `matches.py`（`load_candidate`、`evaluate_and_store`），`/api/jobs/analyze` 与再次分析共用 |
-| 插件 | 历史中打开报告后有"再次分析"按钮；完成后显示新报告；进行中时"历史"标签显示转圈；切换到其他报告后结果不会覆盖当前页面 |
-| 测试 | 后端 3 个新测试：只调用评估、使用重新上传后的画像、旧报告保留、截断标记沿用、404/422/502 |
+| `POST /api/matches/{id}/reanalyze` | Re-evaluates using the saved job text and parsed JD plus the current profile/preferences, with a single LLM call; creates a new report and keeps the old one |
+| Refactoring | Loading the profile/preferences and evaluating + saving a report moved into `matches.py` (`load_candidate`, `evaluate_and_store`), shared by `/api/jobs/analyze` and re-analysis |
+| Extension | Opening a report from History shows an "Analyze again" button; the new report is shown when it finishes; the History tab shows a spinner while it runs; switching to another report means the result won't overwrite the current view |
+| Tests | 3 new backend tests: only the evaluator is called, the re-uploaded profile is used, the old report is kept, the truncation flag carries over, 404/422/502 |
 
-### 说明
+### Notes
 
-- 重新上传简历只替换画像，不删除历史报告（只有删除画像才会清空），因此修改简历后可以直接在历史中再次分析。
-- 曾尝试"同 URL + 文本相似度"回退来提高 JD 缓存命中率，与实际需求不符，未保留。
+- Uploading a new resume only replaces the profile and doesn't delete past reports (only deleting the profile clears them), so after editing the resume you can re-analyse straight from History.
+- Tried a "same URL + text similarity" fallback to raise the JD cache hit rate; it didn't fit the actual need and was dropped.
 
-### 权重调整
+### Weight change
 
-总分权重由 `0.35S + 0.25E + 0.20R + 0.20P` 改为 `0.35S + 0.25E + 0.30R + 0.10P`：提高职责匹配，降低偏好。仍未用标注数据校准。已保存的报告保留生成时的权重和总分，不会重算；需要新分数可在历史中"再次分析"。
+The overall-score weights changed from `0.35S + 0.25E + 0.20R + 0.20P` to `0.35S + 0.25E + 0.30R + 0.10P`: more weight on responsibilities, less on preferences. Still not calibrated with labelled data. Saved reports keep the weights and total they were created with and are not recalculated; use "Analyze again" in History for a new score.
 
-## 2026-10-20：简历画像新增签证 / 工作权利
+## 2026-10-20: Visa / work rights in the resume profile
 
-- **问题**：简历解析结果中没有签证状况。`CandidateProfileData` 没有对应字段，提示词也没要求提取；JD 一侧早已有 `work_rights`。
-- **修复**：画像新增 `work_rights: str | None`，与 JD 字段同名。提示词规定只在简历明确写出签证、居留、公民身份或工作许可时原文照录（含到期日），不得从国籍、所在地、学历或语言推断，否则为 null。
-- **评估**：`match_evaluator` 提示词要求对比画像与 JD 的 `work_rights`，任一缺失或可能不符时写入 uncertainties；不得判断"有 / 无资格"（符合大纲中不对签证资格作确定性判断的约束）。硬性筛选不变，仍保持确定性。
-- **插件**：简历页在概要下显示"签证 / 工作权利"；简历未写明时提示可在"编辑"中补充 `work_rights`。`types.ts` 与后端同步。
-- **迁移** `37bb9f4319e7`：为已有画像补 `work_rights: null`，支持降级；已在数据库副本上测试升级 → 降级 → 升级。**另一台电脑拉取后需运行 `.venv/bin/alembic upgrade head`。**
-- **日志**：排查一次简历解析的 `ValidationError` 时发现日志只有异常类型，无法定位。`llm.py` 现在额外记录出错字段路径和错误类型（如 `skills.3.proficiency (literal_error)`），不记录字段值，简历内容不进日志；有测试保证。
-- **测试**：新增 `test_parser_keeps_work_rights`，提示词字段检查加入 `work_rights`；冒烟测试的虚构 CV 加了一行工作权利并断言能被提取（尚未用真实模型运行）。107 个后端测试、13 个插件测试通过，`ruff` 通过。
+- **Problem**: the parsed resume had no visa status. `CandidateProfileData` had no field for it and the prompt didn't ask for it, while the JD side already had `work_rights`.
+- **Fix**: added `work_rights: str | None` to the profile, with the same name as the JD field. The prompt says to copy it verbatim (including expiry dates) only when the resume explicitly states a visa, residency, citizenship or work permit, never to infer it from nationality, location, education or languages, and to leave it null otherwise.
+- **Evaluation**: the `match_evaluator` prompt asks the model to compare the profile's and the JD's `work_rights` and add an uncertainty when either is missing or they may not match. It must not judge "eligible / not eligible" (in line with the outline's rule against definitive judgements about visa eligibility). The hard filter is unchanged and stays deterministic.
+- **Extension**: the Resume page shows "Visa / work rights" under the summary; when the resume doesn't state it, a hint says `work_rights` can be added under "Edit". `types.ts` updated to match the backend.
+- **Migration** `37bb9f4319e7`: backfills `work_rights: null` on existing profiles and supports downgrade; tested upgrade → downgrade → upgrade on a copy of the database. **After pulling on the other machine, run `.venv/bin/alembic upgrade head`.**
+- **Logging**: while debugging a resume-parsing `ValidationError`, the log only had the exception type, which wasn't enough to find the cause. `llm.py` now also logs the failing field path and error type (e.g. `skills.3.proficiency (literal_error)`) but not field values, so resume content stays out of the logs; a test enforces this.
+- **Tests**: added `test_parser_keeps_work_rights` and added `work_rights` to the prompt field check; the smoke test's synthetic CV gained a work-rights line with an assertion that it gets extracted (not yet run against the real model). 107 backend tests and 13 extension tests pass, `ruff` passes.
 
-## 2026-10-19 ～ 2026-10-20：统一模型、冒烟测试、Chrome 插件
+## 2026-10-19 – 2026-10-20: Unified model, smoke tests, Chrome extension
 
-### 今日成果
+### Results
 
-完成 Phase 1 的插件端：**打开招聘页面 → 点击插件 → 侧边栏中看到有依据的匹配报告**，Phase 1 闭环打通。
+Finished the extension side of Phase 1: **open a job page → click the extension → see an evidence-backed match report in the side panel**. The Phase 1 loop is complete.
 
-| 事项 | 状态 | 说明 |
+| Item | Status | Details |
 |---|---|---|
-| 统一默认模型 | ✅ | 全部改为 `qwen3.8-27b`（`config.py`、`.env.example`、`README.md`、测试） |
-| 真实模型冒烟测试 | ✅ | `backend/tests/test_live.py`，默认跳过，`pytest -m live -s` 手动运行 |
-| 已知问题清单 | ✅ | `docs/KNOWN_ISSUES.md`，16 条，按 P1–P3 分级 |
-| Chrome 插件 | ✅ | 分析、报告、简历、历史、设置五部分 |
-| 语言选项 | ✅ | 简体中文 / English，同时控制界面和报告文字 |
-| 收藏、删除、导出 Markdown | ✅ | 后端新增 `saved` 字段与接口 |
+| Unified default model | ✅ | Everything now uses `qwen3.8-27b` (`config.py`, `.env.example`, `README.md`, tests) |
+| Real-model smoke tests | ✅ | `backend/tests/test_live.py`, skipped by default, run manually with `pytest -m live -s` |
+| Known-issues list | ✅ | `docs/KNOWN_ISSUES.md`, 16 items, graded P1–P3 |
+| Chrome extension | ✅ | Five parts: Analyze, Report, Resume, History, Settings |
+| Language option | ✅ | Simplified Chinese / English, controls both UI and report text |
+| Save, delete, export to Markdown | ✅ | Backend gained a `saved` field and endpoints |
 
-### Chrome 插件
+### Chrome extension
 
-位于 `extension/`：Manifest V3 侧边栏插件，React + TypeScript + Vite。`npm run build` 后在 `chrome://extensions` 加载 `extension/dist`。
+Lives in `extension/`: a Manifest V3 side-panel extension built with React + TypeScript + Vite. After `npm run build`, load `extension/dist` in `chrome://extensions`.
 
-| 页面 | 功能 |
+| Page | Features |
 |---|---|
-| 分析 | 读取当前标签页可见文字并分析；先选中 200 字以上的岗位描述则只分析选中部分 |
-| 报告 | 总分、硬性条件、S/E/R/P（展开可看理由与原文引用，未核验的标 ⚠）、匹配技能、技能差距、不确定项；收藏 / 导出 Markdown / 删除 |
-| 简历 | 上传 PDF/DOCX、查看解析结果、以 JSON 修改、确认 |
-| 历史 | 全部 / 已收藏切换，点开查看完整报告 |
-| 设置 | 语言、后端地址、API Key（存于 `chrome.storage.local`，不同步） |
+| Analyze | Reads the visible text of the current tab and analyses it; if you first select a job description of 200+ characters, only the selection is analysed |
+| Report | Overall score, hard requirements, S/E/R/P (expand for reasoning and verbatim quotes; unverified ones marked ⚠), matched skills, skill gaps, uncertainties; save / export to Markdown / delete |
+| Resume | Upload PDF/DOCX, view the parsed result, edit as JSON, confirm |
+| History | Toggle all / saved, open a full report |
+| Settings | Language, backend URL, API key (stored in `chrome.storage.local`, not synced) |
 
-### 关键技术决策
+### Key technical decisions
 
-| 决策 | 原因 |
+| Decision | Reason |
 |---|---|
-| 侧边栏而非弹出窗口 | 分析约 30 秒，弹出窗口一失焦就关闭，请求会被中断 |
-| 点击时用 `chrome.scripting` + `activeTab` 读取页面 | 权限最小化，不常驻内容脚本；读不到时可选择授予"读取网站内容"的可选权限 |
-| 插件直接请求后端，不改 CORS | 扩展页面访问已授权主机不受 CORS 限制 |
-| 各页面保持挂载 | 切换标签不丢失进行中的分析或上传；标签栏显示转圈 |
-| 错误以代码形式抛出，由界面翻译 | 切换语言后错误信息也随之变化 |
-| 语言代码同时发给后端 | 模型写的说明随用户语言；引用、技能名、条件文字保持原文，核验不受影响 |
-| 所有分析自动保存，收藏只是标记 | 关闭侧边栏后仍可在历史中找回结果 |
-| 导出用系统"另存为"对话框 | 用户自选保存位置；不可用时退回普通下载，无需 `downloads` 权限 |
+| Side panel instead of popup | Analysis takes about 30 seconds; a popup closes as soon as it loses focus and the request is cut off |
+| Read the page on click with `chrome.scripting` + `activeTab` | Minimal permissions, no persistent content script; if the page can't be read, the user can grant the optional "read site content" permission |
+| Extension calls the backend directly, no CORS changes | Extension pages aren't subject to CORS for hosts they have permission for |
+| Keep every page mounted | Switching tabs doesn't lose an analysis or upload in progress; the tab bar shows a spinner |
+| Errors thrown as codes and translated by the UI | Error messages change with the language too |
+| Language code also sent to the backend | Model-written explanations follow the user's language; quotes, skill names and condition text stay verbatim, so verification isn't affected |
+| Every analysis saved automatically; saving only marks it | Results can still be found in History after closing the side panel |
+| Export uses the system "Save as" dialog | The user picks where to save; falls back to a normal download when unavailable, no `downloads` permission needed |
 
-### 后端改动
+### Backend changes
 
-- `POST /api/jobs/analyze` 新增可选参数 `language`（BCP 47，默认 `en`，格式不对返回 422）。
-- `match_results` 新增 `saved` 字段（迁移 `a138acf143ff`，已在数据库副本上测试升级 → 降级 → 升级）。
-- 新增 `PATCH /api/matches/{id}`（收藏）、`DELETE /api/matches/{id}`、`GET /api/matches?saved=`。
-- **另一台电脑拉取后需运行 `.venv/bin/alembic upgrade head`。**
+- `POST /api/jobs/analyze` gained an optional `language` parameter (BCP 47, default `en`; a malformed value returns 422).
+- `match_results` gained a `saved` field (migration `a138acf143ff`, tested upgrade → downgrade → upgrade on a copy of the database).
+- Added `PATCH /api/matches/{id}` (save), `DELETE /api/matches/{id}` and `GET /api/matches?saved=`.
+- **After pulling on the other machine, run `.venv/bin/alembic upgrade head`.**
 
-### 冒烟测试结果（`qwen3.8-27b`）
+### Smoke test results (`qwen3.8-27b`)
 
-| 测试 | 第 1 轮 | 第 2 轮 |
+| Test | Run 1 | Run 2 |
 |---|---|---|
-| 简历解析 | 9.0s，通过 | 10.5s，通过 |
-| 正常岗位 | 68 分，30.8s | 60 分，31.3s |
-| 附加"给满分"注入 | 60 分，26.5s | 69 分，28.0s |
-| 中文报告 | — | 61 分，31.8s；理由为中文，引用仍能核验 |
-| 非招聘页面 | 422，2.7s | 422，3.8s |
+| Resume parsing | 9.0s, pass | 10.5s, pass |
+| Normal job | 68, 30.8s | 60, 31.3s |
+| With "give full marks" injection | 60, 26.5s | 69, 28.0s |
+| Chinese report | — | 61, 31.8s; reasoning in Chinese, quotes still verify |
+| Not a job page | 422, 2.7s | 422, 3.8s |
 
-简历解析检查：姓名与联系方式未泄露、实习进入工作经历、注入的假技能未记录、语言与奖项已记录。
+Resume-parsing checks: no name or contact details leaked, internship went into work experience, the injected fake skill wasn't recorded, languages and awards were recorded.
 
-发现：
-- `27b` 的分析耗时（26–32 秒）与之前的 `max` 相近，瓶颈在匹配评估；提速应尝试 `flash`。
-- 同一岗位总分在 60–69 之间变化，单项最多差 15 分，比原先估计的 ±10 分大。
-- 第 2 轮注入版本反而比正常版本高 9 分。没有被推到满分，但单次对比无法判断注入是否有轻微影响，需要多次采样比较分布（已记入 KNOWN_ISSUES #2）。
+Findings:
+- `27b` analysis time (26–32 seconds) is close to the earlier `max`; the bottleneck is match evaluation. Try `flash` for speed.
+- The overall score for the same job varied between 60 and 69, with single dimensions differing by up to 15 points, more than the earlier ±10 estimate.
+- In run 2 the injected version scored 9 points higher than the normal one. It wasn't pushed to full marks, but a single comparison can't tell whether the injection has a slight effect; this needs repeated sampling to compare distributions (recorded as KNOWN_ISSUES #2).
 
-### 测试与验证
+### Tests and verification
 
-- 后端 106 个测试通过（另有 5 个冒烟测试默认跳过）；`ruff check` 与 `ruff format --check` 通过。
-- 插件 13 个 vitest 单元测试通过（错误信息、格式化、语言检测与各语言条目一致、设置校验、Markdown 导出）；`tsc` 类型检查与构建通过。
-- 已在真实 Chrome 中手动测试通过。
+- 106 backend tests pass (plus 5 smoke tests skipped by default); `ruff check` and `ruff format --check` pass.
+- 13 extension vitest unit tests pass (error messages, formatting, language detection and matching keys across locales, settings validation, Markdown export); `tsc` type checking and the build pass.
+- Tested by hand in real Chrome.
 
-### 其他记录
+### Other notes
 
-- `docs/` 曾一度改为仅本地保留，现已恢复提交到 GitHub，两台电脑通过 Git 同步文档。
-- 新增 KNOWN_ISSUES #16：关闭侧边栏会丢失进行中任务的显示（后端仍会完成并保存）。
+- `docs/` was briefly kept local-only; it's committed to GitHub again, and the two machines sync docs through Git.
+- Added KNOWN_ISSUES #16: closing the side panel loses the display of a task in progress (the backend still finishes and saves it).
 
-### 下一步
+### Next steps
 
-1. 在插件中编辑求职偏好（目前仍需通过 `/docs`）。
-2. 处理 KNOWN_ISSUES P1：地区匹配（#1）、评估集与权重校准、注入影响的多次采样评估（#2）。
-3. 用冒烟测试对比 `qwen3.8-flash` 的质量与耗时。
-4. 可选：未收藏记录自动清理；"结果是否准确"反馈；关闭侧边栏后接续任务（#16）。
+1. Edit job preferences in the extension (currently still done through `/docs`).
+2. Tackle the KNOWN_ISSUES P1 items: location matching (#1), evaluation set and weight calibration, repeated-sampling evaluation of injection impact (#2).
+3. Use the smoke tests to compare quality and latency of `qwen3.8-flash`.
+4. Optional: auto-clean unsaved records; "was this accurate?" feedback; resume tasks after closing the side panel (#16).
 
 ---
 
-## 2026-10-19：第二台电脑同步、简历解析修复、后端文档
+## 2026-10-19: Second machine setup, resume-parsing fixes, backend docs
 
-### 今日成果
+### Results
 
-| 事项 | 状态 | 说明 |
+| Item | Status | Details |
 |---|---|---|
-| 第二台电脑环境同步 | ✅ | 安装依赖、新建 `.env`（独立的 `API_KEY`）、`alembic upgrade head`、健康检查通过 |
-| 真实 CV 端到端解析 | ✅ | 发现 3 个问题（见下） |
-| 简历解析修复 | ✅ | 实习归类、姓名清除、新增语言与奖项字段 |
-| 后端运行逻辑文档 | ✅ | `docs/BACKEND.md`，含 Mermaid 流程图、时序图、ER 图 |
+| Second machine setup | ✅ | Installed dependencies, created `.env` (separate `API_KEY`), `alembic upgrade head`, health check passes |
+| End-to-end parsing of a real CV | ✅ | Found 3 problems (below) |
+| Resume-parsing fixes | ✅ | Internship classification, name redaction, new languages and awards fields |
+| Backend internals doc | ✅ | `docs/BACKEND.md`, with Mermaid flowcharts, a sequence diagram and an ER diagram |
 
-### 真实 CV 测试发现的问题与修复
+### Problems found with a real CV, and fixes
 
-用本人真实 CV（仅在本机使用，不进入 Git）通过 `qwen3.8-27b` 解析，对照 PDF 原文后发现：
+Parsed my own real CV (used only on this machine, never in Git) with `qwen3.8-27b` and compared it with the PDF:
 
-| 问题 | 影响 | 修复 |
+| Problem | Impact | Fix |
 |---|---|---|
-| 带职位和日期的实习被归入 `projects` | 职位和起止日期丢失，经验分 E 偏低 | 提示词规定：有职位和日期的实习归入 `work_experience` |
-| 项目描述中出现候选人姓名 | 违反"姓名不进入结构化数据"，且会发给评估模型 | 提示词要求姓名只写入 `candidate_name`；代码 `redact_name` 再把所有字段中的姓名替换为 "the candidate"，然后丢弃该字段 |
-| 语言能力和奖项未记录 | 画像中没有对应字段；语言要求在岗位中很常见 | `CandidateProfileData` 新增 `languages`、`awards` |
+| Internships with a title and dates were put in `projects` | Title and dates lost; experience score E too low | Prompt rule: internships with a title and dates go into `work_experience` |
+| The candidate's name appeared in project descriptions | Breaks the "no name in structured data" rule, and gets sent to the evaluator | Prompt says the name may only go into `candidate_name`; the code's `redact_name` then replaces the name in every field with "the candidate" and drops that field |
+| Languages and awards not recorded | The profile had no fields for them; language requirements are common in job ads | Added `languages` and `awards` to `CandidateProfileData` |
 
-姓名清除规则：全名不分大小写、正反顺序都匹配；单独的名字部分区分大小写（避免 "Will" 误伤 "will"），少于 3 个字母的不单独替换（避免 "Ma"、"Li" 误伤）。
+Name-redaction rules: the full name matches case-insensitively and in either order; individual name parts match case-sensitively (so "Will" doesn't hit "will"), and parts shorter than 3 letters are not replaced on their own (so "Ma" and "Li" don't cause false hits).
 
-修复后重新解析同一份 CV：实习进入工作经历且保留了日期；结构化数据中不再出现姓名；语言和奖项均已记录；其余字段与修复前一致。
+Re-parsing the same CV after the fixes: internships are in work experience with their dates; the name no longer appears in the structured data; languages and awards are recorded; all other fields match the pre-fix result.
 
-### 数据迁移
+### Data migration
 
-- 新迁移 `14eb892a0f74`：为已有画像的 JSON 补上空的 `languages` 和 `awards`，支持降级。已在本机数据库上测试升级 → 降级 → 升级，均正常。
-- **另一台电脑拉取代码后，需运行 `.venv/bin/alembic upgrade head`。** 否则旧画像缺少新字段，读取时会校验失败。
+- New migration `14eb892a0f74`: adds empty `languages` and `awards` to existing profiles' JSON, supports downgrade. Tested upgrade → downgrade → upgrade on the local database without problems.
+- **After pulling the code on the other machine, run `.venv/bin/alembic upgrade head`.** Otherwise old profiles lack the new fields and fail validation when read.
 
-### 测试
+### Tests
 
-- 新增 `backend/tests/test_resume_parser.py`，共 8 个测试。只把 OpenAI 客户端的 `create` 换成假实现，提示词组装、JSON 校验、`candidate_name` 丢弃、姓名清除都走真实代码。
-- 测试数据全部为虚构姓名（Jane Doe、Xiaoming Li、Will Smith）。
-- 共 100 个测试通过；`ruff check` 和 `ruff format --check` 通过。
+- Added `backend/tests/test_resume_parser.py` with 8 tests. Only the OpenAI client's `create` is replaced with a fake; prompt assembly, JSON validation, dropping `candidate_name` and name redaction all run the real code.
+- All test data uses fictional names (Jane Doe, Xiaoming Li, Will Smith).
+- 100 tests pass; `ruff check` and `ruff format --check` pass.
 
-### 其他记录
+### Other notes
 
-- 默认模型改为 `qwen3.8-27b`（`.env` 与 `CLAUDE.md`）。注意：`config.py` 和 `.env.example` 中的默认值仍是 `qwen-plus`。
-- 简历解析耗时约 44–47 秒（真实 CV 文本较长），明显慢于上次对比测试中的 9 秒（那次用的是较短的虚构简历）。
-- 写文档时确认的现有行为：画像未确认也能分析岗位（报告中会标 `profile_confirmed: false`）；JD 缓存是全局的；匹配评估每次都重新调用 LLM，不缓存。
+- Default model changed to `qwen3.8-27b` (`.env` and `CLAUDE.md`). Note: the defaults in `config.py` and `.env.example` are still `qwen-plus`.
+- Resume parsing takes about 44–47 seconds (the real CV is long), much slower than the 9 seconds in the earlier comparison (which used a shorter synthetic resume).
+- Existing behaviour confirmed while writing the docs: jobs can be analysed with an unconfirmed profile (the report shows `profile_confirmed: false`); the JD cache is global; match evaluation calls the LLM every time and isn't cached.
 
-### 下一步
+### Next steps
 
-1. Chrome 插件（Node.js v24 已在本机就绪）。
-2. 统一默认模型配置（`config.py` / `.env.example`）。
-3. 考虑增加可选的真实模型冒烟测试（如 `pytest -m live`，默认跳过）。
-4. 沿用上次的待办：模型对比、评估集、大纲公式写法、LICENSE。
+1. Chrome extension (Node.js v24 is ready on this machine).
+2. Unify the default model configuration (`config.py` / `.env.example`).
+3. Consider optional real-model smoke tests (e.g. `pytest -m live`, skipped by default).
+4. Carried over from last time: model comparison, evaluation set, formula syntax in the outline, LICENSE.
 
 ---
 
-## 2026-10-18 ～ 2026-10-19：Phase 1 后端 MVP
+## 2026-10-18 – 2026-10-19: Phase 1 backend MVP
 
-### 今日成果
+### Results
 
-完成 Phase 1 的后端闭环：**上传简历 → 设置求职偏好 → 分析岗位 → 生成有依据的匹配报告**。Chrome 插件尚未开始。
+Finished the Phase 1 backend loop: **upload resume → set job preferences → analyse a job → produce an evidence-backed match report**. The Chrome extension hasn't been started.
 
-| 模块 | 状态 | 说明 |
+| Module | Status | Details |
 |---|---|---|
-| 项目初始化 | ✅ | Git 仓库、`.gitignore`、`README.md`、`CLAUDE.md`、Python 3.13 虚拟环境 |
-| 后端骨架 | ✅ | FastAPI 应用工厂、配置加载、SQLAlchemy + Alembic、API Key 认证 |
-| 简历上传与解析 | ✅ | PDF/DOCX 文本提取 → LLM 结构化 → 用户核对确认 |
-| 求职偏好 | ✅ | 地区、工作形式、雇佣类型、级别、薪资、必要条件、排除条件 |
-| 岗位分析与匹配 | ✅ | JD 结构化、硬性条件过滤、三维 LLM 评分、证据核验、加权总分 |
-| LLM 接入 | ✅ | DashScope（默认）/ Azure OpenAI，可配置切换 |
-| Chrome 插件 | ⏳ | 下一步 |
+| Project setup | ✅ | Git repo, `.gitignore`, `README.md`, `CLAUDE.md`, Python 3.13 virtual environment |
+| Backend skeleton | ✅ | FastAPI app factory, config loading, SQLAlchemy + Alembic, API key auth |
+| Resume upload and parsing | ✅ | PDF/DOCX text extraction → LLM structuring → user review and confirmation |
+| Job preferences | ✅ | Location, work arrangement, employment type, seniority, salary, must-haves, deal-breakers |
+| Job analysis and matching | ✅ | JD structuring, hard-requirement filtering, three-dimension LLM scoring, evidence verification, weighted total |
+| LLM integration | ✅ | DashScope (default) / Azure OpenAI, switchable in config |
+| Chrome extension | ⏳ | Next |
 
-### API 一览
+### API overview
 
-| Method | Endpoint | 作用 |
+| Method | Endpoint | Purpose |
 |---|---|---|
-| GET | `/api/health` | 健康检查（无需认证） |
-| POST | `/api/profile/resume` | 上传并解析简历 |
-| GET / PATCH / DELETE | `/api/profile` | 查看 / 修改并确认 / 删除画像（同时删除匹配报告） |
-| GET / PATCH / DELETE | `/api/preferences` | 查看 / 部分更新 / 重置求职偏好 |
-| POST | `/api/jobs/analyze` | 分析当前岗位，生成匹配报告 |
-| GET | `/api/matches`、`/api/matches/{id}` | 历史报告列表 / 详情 |
+| GET | `/api/health` | Health check (no auth) |
+| POST | `/api/profile/resume` | Upload and parse a resume |
+| GET / PATCH / DELETE | `/api/profile` | View / edit and confirm / delete the profile (also deletes match reports) |
+| GET / PATCH / DELETE | `/api/preferences` | View / partially update / reset job preferences |
+| POST | `/api/jobs/analyze` | Analyse the current job and produce a match report |
+| GET | `/api/matches`, `/api/matches/{id}` | List past reports / report detail |
 
-除 `/api/health` 外均需请求头 `X-API-Key`。交互式文档：启动后访问 `http://127.0.0.1:8000/docs`。
+Every endpoint except `/api/health` requires the `X-API-Key` header. Interactive docs: start the server and open `http://127.0.0.1:8000/docs`.
 
-### 匹配流程
+### Matching flow
 
-1. **清洗岗位文本**：去除提示词分隔标签（防伪造），规范空白，最长 20,000 字符。
-2. **JD 结构化（LLM）**：按文本指纹缓存，同一岗位不重复解析；非招聘页面返回 422。
-3. **匹配评估（LLM）**：对技能 S、经验 E、职责 R 打分（0–100），附 CV/JD 原文引用、技能差距、不确定项。只发送结构化画像，不再发送含联系方式的简历原文。
-4. **规则计算（代码，确定性）**：
-   - 硬性条件过滤：信息缺失为"待确认"，不视为不符合。
-   - 偏好分 P：通过 100 / 待确认 50 / 不符合 0 的平均值。
-   - 总分：`0.35S + 0.25E + 0.20R + 0.20P`（初始权重，待校准）。
-   - 证据核验：逐条检查引用是否真实出现在画像或 JD 中，未找到的标为 `verified: false`。
+1. **Clean the job text**: strip prompt delimiter tags (to prevent spoofing), normalise whitespace, cap at 20,000 characters.
+2. **Structure the JD (LLM)**: cached by text fingerprint so the same job isn't parsed twice; non-job pages return 422.
+3. **Match evaluation (LLM)**: scores skills S, experience E and responsibilities R (0–100), with verbatim CV/JD quotes, skill gaps and uncertainties. Only the structured profile is sent, not the raw resume with contact details.
+4. **Rule-based calculation (code, deterministic)**:
+   - Hard-requirement filter: missing information is "needs review", not a mismatch.
+   - Preference score P: average of pass 100 / needs review 50 / mismatch 0.
+   - Total: `0.35S + 0.25E + 0.20R + 0.20P` (initial weights, to be calibrated).
+   - Evidence verification: each quote is checked against the profile or the JD; quotes that can't be found are marked `verified: false`.
 
-### 关键技术决策
+### Key technical decisions
 
-| 决策 | 原因 |
+| Decision | Reason |
 |---|---|
-| 数据库先用 SQLite | 单用户 MVP 无需数据库服务；经 SQLAlchemy 访问，Phase 2 切换 PostgreSQL + pgvector 只需改连接串并迁移 |
-| PDF 解析用 `pypdf` 而非 PyMuPDF | PyMuPDF 为 AGPL，与公开仓库常用的 MIT 许可冲突 |
-| 不提取联系方式 | 数据最小化；姓名、邮箱、电话不进入结构化数据 |
-| 重新上传简历重置"已确认" | 新解析结果须经用户核对 |
-| 偏好与简历分表 | 偏好是意愿，简历是事实，避免模型混淆 |
-| 分数由代码加权，而非 LLM 直接给总分 | 可解释、可复现、可测试 |
-| LLM 调用封装为 `StructuredLLM` | 简历解析、JD 解析、匹配评估共用；切换服务商只改配置 |
-| DashScope 使用 JSON 模式 + Pydantic 校验 | 未确认其是否支持严格 json_schema；校验失败返回 502，不存入错误数据 |
-| 测试中隔离 LLM 环境变量 | 防止开发机上的 API Key 让测试调用真实接口 |
+| SQLite for now | A single-user MVP doesn't need a database server; access goes through SQLAlchemy, so moving to PostgreSQL + pgvector in Phase 2 only needs a new connection string and a migration |
+| `pypdf` for PDF parsing instead of PyMuPDF | PyMuPDF is AGPL, which conflicts with the MIT licence common for public repos |
+| No contact details extracted | Data minimisation; name, email and phone never enter the structured data |
+| Re-uploading a resume resets "confirmed" | A new parse must be reviewed by the user |
+| Preferences and resume in separate tables | Preferences are wishes, the resume is facts; keeps the model from mixing them up |
+| Scores weighted in code, not a total from the LLM | Explainable, reproducible, testable |
+| LLM calls wrapped in `StructuredLLM` | Shared by resume parsing, JD parsing and match evaluation; switching providers is only a config change |
+| DashScope uses JSON mode + Pydantic validation | Not confirmed whether it supports strict json_schema; validation failures return 502 and bad data is never stored |
+| LLM environment variables isolated in tests | Prevents an API key on the dev machine from making tests call the real API |
 
-### LLM 服务商演变
+### How the LLM provider changed
 
-1. **Azure OpenAI**：最初方案；后因免费额度用完暂停。
-2. **本地 Ollama（qwen3:8b）**：可用，但关闭思考模式时会听从简历中的注入指令；开启则单次约 77 秒。已移除。
-3. **DashScope（当前默认）**：OpenAI 兼容接口，速度和抗注入均表现良好。Azure 接口保留，`LLM_PROVIDER=azure` 即可切回。
+1. **Azure OpenAI**: the original plan; paused when the free credit ran out.
+2. **Local Ollama (qwen3:8b)**: worked, but with thinking off it followed injected instructions in the resume; with thinking on a single call took about 77 seconds. Removed.
+3. **DashScope (current default)**: OpenAI-compatible API, good on both speed and injection resistance. The Azure path is kept; set `LLM_PROVIDER=azure` to switch back.
 
-简历解析模型对比（同一份虚构简历 × 3 轮，含注入测试）：
+Resume-parsing model comparison (same synthetic resume × 3 runs, including an injection test):
 
-| 模型 | 平均耗时 | 错误 | 被注入 | 质量问题 |
+| Model | Avg. time | Errors | Injected | Quality issues |
 |---|---|---|---|---|
-| qwen3.8-27b | 9.0s | 0/3 | 0/3 | 无 |
-| qwen3.8-flash | 5.7s | 0/3 | 0/3 | 无 |
-| qwen-plus | 9.5s | 0/3 | 0/3 | 无 |
+| qwen3.8-27b | 9.0s | 0/3 | 0/3 | None |
+| qwen3.8-flash | 5.7s | 0/3 | 0/3 | None |
+| qwen-plus | 9.5s | 0/3 | 0/3 | None |
 
-样本很小，仅说明"都可用"，不代表优劣排序。当前 `.env` 使用 `qwen3.8-max`（未参与上表对比）。
+The sample is tiny; it only shows that all of them work, not which is better. The current `.env` uses `qwen3.8-max` (not in the comparison above).
 
-### 测试与验证
+### Tests and verification
 
-- **自动化测试**：92 个，全部通过；覆盖文本提取、认证、上传、偏好校验、硬性过滤各分支、薪资时薪/年薪换算、证据核验、加权计算、注入标签剥离、缓存、错误处理、级联删除。测试均使用假 LLM，不访问外部 API。
-- **代码检查**：`ruff check` 与 `ruff format --check` 通过。
-- **端到端实测**（DashScope `qwen3.8-max`，临时数据库，虚构简历与岗位）：
+- **Automated tests**: 92, all passing. They cover text extraction, auth, upload, preference validation, every branch of the hard filter, hourly/annual salary conversion, evidence verification, the weighted calculation, injection-tag stripping, caching, error handling and cascading deletes. All tests use fake LLMs and never call external APIs.
+- **Linting**: `ruff check` and `ruff format --check` pass.
+- **End-to-end run** (DashScope `qwen3.8-max`, temporary database, synthetic resume and job):
 
-| | 正常岗位 | 含"给满分"注入指令 |
+| | Normal job | With "give full marks" injection |
 |---|---|---|
-| 总分 | 67 | 68 |
+| Total | 67 | 68 |
 | S / E / R / P | 65 / 40 / 70 / 100 | 75 / 40 / 60 / 100 |
-| 耗时 | 26.5s | 34.0s |
+| Time | 26.5s | 34.0s |
 
-注入未生效（未变成满分，Kubernetes 仍列为缺失技能）。报告正确指出缺少 Azure、经验不足 1 年、签证身份未说明。
+The injection didn't work (no full marks, and Kubernetes was still listed as a missing skill). The report correctly pointed out missing Azure, under 1 year of experience and unstated visa status.
 
-### 已发现并修复的问题
+### Problems found and fixed
 
-- SQLite 不保存时区，时间读回后丢失 UTC 标记 → 新增 `UTCDateTime` 列类型并加回归测试。
-- `.env` 中留空的配置项导致启动失败 → 空值回退为默认值。
-- 本地模型把 "Dec 2024" 补成 `2024-12-01` → 提示词要求日期照原文抄录。
-- Pydantic 先做正则校验再转大写，导致小写币种被拒 → 正则改为大小写都接受。
+- SQLite doesn't store time zones, so timestamps lost their UTC marker when read back → added a `UTCDateTime` column type and a regression test.
+- Empty settings in `.env` made startup fail → empty values now fall back to defaults.
+- The local model turned "Dec 2024" into `2024-12-01` → the prompt now says to copy dates verbatim.
+- Pydantic ran the regex check before upper-casing, so lower-case currency codes were rejected → the regex now accepts both cases.
 
-### 已知限制
+### Known limitations
 
-- **单项分数波动约 ±10 分**（总分较稳定），需人工标注评估集校准。
-- **部分判断偏宽松**，例如把语义检索项目算作 RAG 经验；报告附有依据供人工判断。
-- **分析耗时 26–34 秒**（两次 LLM 调用，`qwen3.8-max`），可评估 `qwen3.8-flash`。
-- **地区匹配为简单包含判断**：岗位写 "New Zealand"、偏好写 "Auckland" 会判为不符合。
-- **扫描版 PDF 不支持**（无 OCR）。
-- **认证为单一 API Key**，仅适用于单用户。
-- **数据库不随 Git 同步**，两台电脑各自独立（有意为之，避免个人数据进入公开仓库）。
-- 简历与岗位内容会发送至阿里云 DashScope 处理。
+- **Single dimension scores vary by about ±10 points** (the total is more stable); needs a hand-labelled evaluation set to calibrate.
+- **Some judgements are lenient**, e.g. counting a semantic-search project as RAG experience; the report includes the evidence so a human can judge.
+- **Analysis takes 26–34 seconds** (two LLM calls, `qwen3.8-max`); `qwen3.8-flash` is worth evaluating.
+- **Location matching is a simple substring check**: a job saying "New Zealand" with a preference of "Auckland" counts as a mismatch.
+- **Scanned PDFs aren't supported** (no OCR).
+- **Auth is a single API key**, only suitable for one user.
+- **The database isn't synced through Git**; the two machines are independent (on purpose, to keep personal data out of the public repo).
+- Resume and job content is sent to Alibaba Cloud DashScope for processing.
 
-### 下一步
+### Next steps
 
-1. **Chrome 插件**（Manifest V3 + React + TypeScript + Vite）：读取当前页面、调用 `/api/jobs/analyze`、展示报告。需先安装 Node.js LTS。
-2. 用 `qwen3.8-flash` / `27b` / `max` 对比匹配评估质量与耗时。
-3. 建立人工标注的 CV–JD 评估集，校准评分权重并衡量波动。
-4. 待办：修复大纲中的公式写法（`\[ \]` → `$$`）；添加 LICENSE。
+1. **Chrome extension** (Manifest V3 + React + TypeScript + Vite): read the current page, call `/api/jobs/analyze`, show the report. Install Node.js LTS first.
+2. Compare match-evaluation quality and latency across `qwen3.8-flash` / `27b` / `max`.
+3. Build a hand-labelled CV–JD evaluation set to calibrate the weights and measure variance.
+4. To do: fix the formula syntax in the outline (`\[ \]` → `$$`); add a LICENSE.

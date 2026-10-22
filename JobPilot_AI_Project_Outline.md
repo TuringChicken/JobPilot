@@ -1,80 +1,80 @@
-# JobPilot AI — 智能求职浏览器插件项目大纲
+# JobPilot AI — Project Outline for an AI Job-Search Browser Extension
 
-## 1. 项目概述
+## 1. Overview
 
-**项目名称：** JobPilot AI  
-**项目类型：** Chrome Extension + AI Job Matching Agent + Cloud Backend  
-**目标：** 根据用户简历和求职偏好，读取招聘页面、搜索合规职位数据源、分析岗位匹配程度，并提供可解释的职位推荐与申请追踪。
+**Project name:** JobPilot AI  
+**Project type:** Chrome Extension + AI Job Matching Agent + Cloud Backend  
+**Goal:** Based on the user's resume and job preferences, read job pages, search permitted job data sources, analyse how well each role matches, and provide explainable job recommendations and application tracking.
 
-### 1.1 核心价值
-- 降低手动浏览和筛选招聘信息的时间成本。
-- 将非结构化 CV 与 Job Description（JD）转化为可分析的数据。
-- 结合规则过滤、语义检索和 LLM 评估，提供有依据的匹配结果。
-- 构建可展示 Agent、RAG/Embedding、浏览器扩展、云部署与 CI/CD 能力的端到端作品。
+### 1.1 Core value
+- Cut the time spent manually browsing and filtering job listings.
+- Turn unstructured CVs and Job Descriptions (JDs) into data that can be analysed.
+- Combine rule-based filtering, semantic retrieval and LLM evaluation to give evidence-backed match results.
+- Build an end-to-end portfolio project that demonstrates agents, RAG/embeddings, browser extensions, cloud deployment and CI/CD.
 
-### 1.2 初期目标用户与场景
-面向在新西兰寻找初级 AI、LLM 应用开发、Python 开发和 AI 自动化相关岗位的求职者。第一版重点支持用户打开一条招聘页面后，点击插件即可查看该岗位与其简历的匹配报告。
+### 1.2 Initial target users and scenario
+Job seekers in New Zealand looking for junior AI, LLM-application development, Python development and AI-automation roles. The first version focuses on one flow: the user opens a job posting, clicks the extension, and sees a match report comparing that role with their resume.
 
-## 2. 功能范围
+## 2. Scope
 
-### 2.1 核心功能
-1. **用户画像管理**：上传 PDF/DOCX 简历；提取教育、技能、认证、项目及工作经验；允许用户确认和修改解析结果。
-2. **求职偏好配置**：目标岗位、地区、薪资、工作形式、级别、必要条件及排除条件。
-3. **当前页面分析**：通过 Chrome Content Script 获取用户主动打开的招聘页面内容，识别并结构化 JD。
-4. **职位采集**：后续通过官方 API、获准数据源及符合网站条款的自动化方式搜索职位。
-5. **智能匹配**：硬性条件过滤、Embedding 语义召回、LLM 解释性评估。
-6. **推荐与追踪**：匹配分数、匹配证据、技能差距、收藏、去重、申请状态及原始职位链接。
-7. **定时报告**：在后端运行允许范围内的周期性搜索，并推送新增高匹配职位。
+### 2.1 Core features
+1. **Candidate profile management**: upload a PDF/DOCX resume; extract education, skills, certifications, projects and work experience; let the user review and edit the parsed result.
+2. **Job preference settings**: target roles, locations, salary, work arrangement, seniority, must-haves and deal-breakers.
+3. **Current-page analysis**: use a Chrome content script to read the job page the user has opened themselves, then identify and structure the JD.
+4. **Job collection**: later, search for jobs through official APIs, permitted data sources and automation that complies with each site's terms.
+5. **Smart matching**: hard-requirement filtering, embedding-based semantic recall, explanatory LLM evaluation.
+6. **Recommendations and tracking**: match score, match evidence, skill gaps, saved jobs, de-duplication, application status and the original job link.
+7. **Scheduled reports**: run periodic searches on the backend within permitted limits and push newly found high-match jobs.
 
-### 2.2 非目标（初期不实现）
-- 绕过 CAPTCHA、反爬措施或访问限制。
-- 未经用户确认自动投递、发送消息或修改外部招聘账户。
-- 依赖浏览器插件在浏览器关闭后持续执行后台任务。
-- 对签证资格或录用概率作确定性判断。
+### 2.2 Non-goals (not in early versions)
+- Bypassing CAPTCHAs, anti-scraping measures or access restrictions.
+- Automatically applying, sending messages or changing external job-site accounts without the user's confirmation.
+- Relying on the browser extension to keep running background tasks after the browser is closed.
+- Making definitive judgements about visa eligibility or the chance of getting an offer.
 
-## 3. 技术架构
+## 3. Architecture
 
 ```mermaid
 flowchart TD
-    U[用户] --> E[Chrome Extension / React]
+    U[User] --> E[Chrome Extension / React]
     E --> API[FastAPI Backend]
-    E --> CS[Content Script: 当前页面提取]
+    E --> CS[Content Script: current-page extraction]
     CS --> API
     API --> CP[CV Parser / Candidate Profile]
-    API --> JC[Job Collector / 合规数据源]
+    API --> JC[Job Collector / permitted sources]
     API --> ME[Matching Engine]
     CP --> DB[(PostgreSQL + pgvector)]
     JC --> DB
     DB --> ME
     ME --> AO[Azure OpenAI / Embeddings]
     ME --> DB
-    API --> R[推荐结果 / 收藏 / 申请追踪]
+    API --> R[Recommendations / saved jobs / application tracking]
     S[Scheduler: Celery + Redis] --> JC
     S --> ME
 ```
 
-### 3.1 技术选型
-| 层级 | 技术 | 职责 |
+### 3.1 Technology choices
+| Layer | Technology | Responsibility |
 |---|---|---|
-| 浏览器插件 | Chrome Manifest V3、TypeScript、React、Vite | 设置、当前页面提取、结果展示 |
-| 后端 API | Python、FastAPI、Pydantic | 数据验证、业务逻辑、任务接口 |
-| AI | Azure OpenAI、Embedding、结构化输出 | CV/JD 解析、语义匹配、评估解释 |
-| 数据库 | PostgreSQL + pgvector | 用户画像、职位、向量、匹配记录 |
-| 自动化与任务 | Playwright（仅合规场景）、Celery、Redis | 采集适配器、后台调度 |
-| 部署与安全 | Azure Container Apps / App Service、Key Vault | 服务托管、密钥管理 |
-| 质量与观测 | Pytest、Playwright Tests、GitHub Actions、Application Insights / OpenTelemetry | 测试、CI/CD、监控 |
+| Browser extension | Chrome Manifest V3, TypeScript, React, Vite | Settings, current-page extraction, displaying results |
+| Backend API | Python, FastAPI, Pydantic | Data validation, business logic, task endpoints |
+| AI | Azure OpenAI, embeddings, structured output | CV/JD parsing, semantic matching, explanations |
+| Database | PostgreSQL + pgvector | Candidate profiles, jobs, vectors, match records |
+| Automation and tasks | Playwright (compliant use only), Celery, Redis | Collection adapters, background scheduling |
+| Deployment and security | Azure Container Apps / App Service, Key Vault | Hosting, secret management |
+| Quality and observability | Pytest, Playwright Tests, GitHub Actions, Application Insights / OpenTelemetry | Testing, CI/CD, monitoring |
 
-## 4. 数据模型
+## 4. Data model
 
 ### 4.1 Candidate Profile
-- `education`：学历与专业
-- `skills`：技术技能及熟练度（可由用户确认）
-- `certifications`：认证
-- `work_experience`：岗位、职责、时间
-- `projects`：项目、技术栈、成果
-- `preferences`：求职偏好（与客观履历分开存储）
+- `education`: degrees and majors
+- `skills`: technical skills and proficiency (user can confirm)
+- `certifications`: certifications
+- `work_experience`: role, responsibilities, dates
+- `projects`: projects, tech stack, outcomes
+- `preferences`: job preferences (stored separately from the factual work history)
 
-### 4.2 Job Schema 示例
+### 4.2 Example Job Schema
 ```json
 {
   "job_id": "source-123456",
@@ -91,121 +91,121 @@ flowchart TD
 }
 ```
 
-建议另建 `users`、`candidate_profiles`、`job_preferences`、`jobs`、`job_embeddings`、`match_results`、`saved_jobs`、`application_tracking`、`collection_runs` 表。职位唯一键优先采用平台 ID 与来源组合，并增加 URL/内容指纹辅助去重。
+Suggested tables: `users`, `candidate_profiles`, `job_preferences`, `jobs`, `job_embeddings`, `match_results`, `saved_jobs`, `application_tracking`, `collection_runs`. The unique key for a job should preferably be the platform ID combined with the source, with a URL/content fingerprint as a secondary de-duplication signal.
 
-## 5. 核心工作流
+## 5. Core workflows
 
-### 5.1 单岗位分析（MVP）
-1. 用户上传简历并核对解析结果。
-2. 用户打开招聘岗位详情页，主动点击插件的“分析岗位”。
-3. Content Script 提取可见 JD，清洗后发送给 FastAPI。
-4. 后端将 JD 转为结构化数据，执行硬性条件检查。
-5. Matching Engine 结合简历、偏好和 JD 生成评分、原文证据与技能差距。
-6. 插件展示报告，允许用户收藏并反馈结果是否准确。
+### 5.1 Single-job analysis (MVP)
+1. The user uploads a resume and reviews the parsed result.
+2. The user opens a job detail page and clicks "Analyze job" in the extension.
+3. The content script extracts the visible JD, cleans it and sends it to FastAPI.
+4. The backend turns the JD into structured data and runs the hard-requirement checks.
+5. The Matching Engine combines the resume, preferences and JD to produce scores, verbatim evidence and skill gaps.
+6. The extension shows the report and lets the user save it and give feedback on whether it is accurate.
 
-### 5.2 批量搜索与推荐（后续版本）
-1. 用户设置搜索范围及调度频率。
-2. Job Collector 从允许的数据源采集职位，规范化并去重。
-3. 硬性条件过滤不适合的岗位。
-4. Embedding 进行语义召回，筛选候选集。
-5. LLM 仅对候选集进行详细评估，控制 Token 成本。
-6. 存储结果、排序并生成新增职位报告。
+### 5.2 Batch search and recommendations (later versions)
+1. The user sets the search scope and schedule.
+2. The Job Collector gathers jobs from permitted sources, normalises them and removes duplicates.
+3. Hard-requirement filtering removes unsuitable roles.
+4. Embeddings do semantic recall to pick a candidate set.
+5. The LLM evaluates only the candidate set in detail, to keep token costs under control.
+6. Results are stored, ranked and turned into a report of new jobs.
 
-### 5.3 Agent Tools（后续版本）
-- `search_jobs()`：搜索合规职位数据源。
-- `extract_job_details()`：结构化 JD。
-- `get_candidate_profile()`：读取用户授权的履历信息。
-- `match_job()`：执行匹配与解释。
-- `save_job()`：保存或更新职位。
-- `generate_report()`：汇总推荐结果。
+### 5.3 Agent tools (later versions)
+- `search_jobs()`: search permitted job data sources.
+- `extract_job_details()`: structure a JD.
+- `get_candidate_profile()`: read the work history the user has authorised.
+- `match_job()`: run matching and explanation.
+- `save_job()`: save or update a job.
+- `generate_report()`: summarise recommendations.
 
-**设计原则：** 搜索、去重、过滤和存储优先使用确定性 Workflow；LLM 负责文本理解、必要的工具选择和解释，不授予无限制的浏览器或外部账户操作权限。
+**Design principle:** searching, de-duplication, filtering and storage use deterministic workflows wherever possible. The LLM handles text understanding, necessary tool selection and explanations, and is never given unrestricted control over the browser or external accounts.
 
-## 6. 匹配算法
+## 6. Matching algorithm
 
-### 6.1 三级匹配
-1. **Hard Filtering**：地区、工作形式、明确必要资格、级别等条件；未知信息应标记为待确认，不直接视为不符合。
-2. **Semantic Matching**：将 Candidate Profile 与 JD 向量化，进行语义召回。
-3. **LLM Evaluation**：对召回职位做细粒度分析，返回分数、依据、技能差距与不确定项。
+### 6.1 Three-stage matching
+1. **Hard filtering**: location, work arrangement, explicitly required qualifications, seniority and similar conditions. Unknown information is marked as needing review, not treated as a mismatch.
+2. **Semantic matching**: embed the Candidate Profile and the JD and do semantic recall.
+3. **LLM evaluation**: analyse recalled jobs in detail and return scores, reasoning, skill gaps and open questions.
 
-### 6.2 初始评分模型
+### 6.2 Initial scoring model
 
 \[
 Score = 0.35S + 0.25E + 0.30R + 0.10P
 \]
 
-| 维度 | 权重 |
+| Dimension | Weight |
 |---|---:|
-| S：技能匹配 | 35% |
-| E：经验匹配 | 25% |
-| R：岗位职责语义匹配 | 30% |
-| P：求职偏好匹配 | 10% |
+| S: skills match | 35% |
+| E: experience match | 25% |
+| R: semantic match of responsibilities | 30% |
+| P: job-preference match | 10% |
 
-各维度标准化至 0–100；权重为初始假设（2026-10-21 由 R 20% / P 20% 调整为 R 30% / P 10%），需用人工标注样本和用户反馈校准。匹配分数不是录用概率。LLM 输出采用 Pydantic/JSON Schema 验证，重要判断附 JD/CV 证据，禁止虚构经验。
+Each dimension is normalised to 0–100. The weights are initial assumptions (changed on 2026-10-21 from R 20% / P 20% to R 30% / P 10%) and need calibrating with hand-labelled samples and user feedback. The match score is not a probability of getting an offer. LLM output is validated with Pydantic/JSON Schema, important judgements carry JD/CV evidence, and inventing experience is forbidden.
 
-## 7. 前端页面规划
+## 7. Planned front-end pages
 
-- **Popup Dashboard**：当前页面分析入口、简历状态、最新推荐摘要。
-- **Profile & Preferences**：简历上传、解析结果编辑、求职偏好。
-- **Match Detail**：总分、维度分、匹配证据、技能差距、待确认条件。
-- **Recommended Jobs**：筛选、排序、查看原始链接、收藏。
-- **Application Tracker**：未申请、准备中、已申请、面试、Offer、已结束。
-- **Settings**：数据源授权、定时频率、通知、隐私与删除数据。
+- **Popup Dashboard**: entry point for analysing the current page, resume status, summary of the latest recommendations.
+- **Profile & Preferences**: resume upload, editing the parsed result, job preferences.
+- **Match Detail**: overall score, dimension scores, match evidence, skill gaps, conditions to confirm.
+- **Recommended Jobs**: filter, sort, open the original link, save.
+- **Application Tracker**: not applied, preparing, applied, interviewing, offer, closed.
+- **Settings**: data-source authorisation, schedule frequency, notifications, privacy and data deletion.
 
-## 8. API 初步设计
+## 8. Initial API design
 
-| Method | Endpoint | 作用 |
+| Method | Endpoint | Purpose |
 |---|---|---|
-| POST | `/api/profile/resume` | 上传并解析简历 |
-| GET/PATCH | `/api/profile` | 获取/更新画像 |
-| GET/PATCH | `/api/preferences` | 获取/更新偏好 |
-| POST | `/api/jobs/analyze` | 分析当前岗位 |
-| GET | `/api/jobs` | 查询已收集职位 |
-| POST | `/api/search-runs` | 创建搜索任务 |
-| GET | `/api/matches` | 获取推荐结果 |
-| POST | `/api/jobs/{id}/save` | 收藏职位 |
-| PATCH | `/api/applications/{id}` | 更新申请状态 |
+| POST | `/api/profile/resume` | Upload and parse a resume |
+| GET/PATCH | `/api/profile` | Get/update the profile |
+| GET/PATCH | `/api/preferences` | Get/update preferences |
+| POST | `/api/jobs/analyze` | Analyse the current job |
+| GET | `/api/jobs` | Query collected jobs |
+| POST | `/api/search-runs` | Create a search run |
+| GET | `/api/matches` | Get recommendations |
+| POST | `/api/jobs/{id}/save` | Save a job |
+| PATCH | `/api/applications/{id}` | Update application status |
 
-API 需要身份认证、输入校验、限流和用户数据隔离。
+The API needs authentication, input validation, rate limiting and per-user data isolation.
 
-## 9. 安全、隐私与合规
+## 9. Security, privacy and compliance
 
-- CV、求职偏好和申请记录作为个人数据处理；传输加密、访问控制、最小化保存并支持删除。
-- API 密钥仅放后端/Key Vault，不嵌入浏览器插件。
-- 插件权限最小化，优先通过用户点击触发页面读取；清晰说明所读取的页面数据。
-- 对每个招聘平台核实条款、API 授权和自动化边界；不绕过 CAPTCHA 或限制。
-- 将招聘网页内容视为不可信输入，防止 Prompt Injection；工具调用采用白名单及参数校验。
-- 外部写操作（尤其申请、发送消息）必须经用户明确确认。
-- 日志不记录完整简历、凭据及不必要的敏感信息。
+- Treat CVs, job preferences and application records as personal data: encrypt in transit, control access, store only what is needed and support deletion.
+- Keep API keys on the backend / in Key Vault; never embed them in the browser extension.
+- Keep extension permissions minimal, prefer reading pages only when the user clicks, and state clearly what page data is read.
+- For every job platform, check the terms, API authorisation and limits on automation; never bypass CAPTCHAs or restrictions.
+- Treat job-page content as untrusted input to prevent prompt injection; tool calls use an allowlist and argument validation.
+- External write actions (especially applying or sending messages) require the user's explicit confirmation.
+- Logs never contain full resumes, credentials or unnecessary sensitive information.
 
-## 10. 开发里程碑
+## 10. Milestones
 
-| 阶段 | 预计周期 | 主要交付物 | 验收标准 |
+| Phase | Estimated duration | Main deliverables | Acceptance criteria |
 |---|---|---|---|
-| Phase 1：MVP | 1–2 周 | 插件、CV 解析、当前页面 JD 分析 | 打开测试岗位页后可生成有依据的匹配报告 |
-| Phase 2：Search Engine | 1–2 周 | 合规数据源接入、职位数据库、去重、向量召回 | 可检索、过滤并排序批量职位 |
-| Phase 3：Agent & Tracking | 1–2 周 | 工具编排、定时任务、收藏与申请追踪 | 能生成新增岗位报告并记录用户反馈 |
-| Phase 4：Cloud & CI/CD | 约 1 周 | Azure 部署、测试、GitHub Actions、监控 | 自动测试和部署通过，关键请求可追踪 |
+| Phase 1: MVP | 1–2 weeks | Extension, CV parsing, JD analysis of the current page | Opening a test job page produces an evidence-backed match report |
+| Phase 2: Search Engine | 1–2 weeks | Permitted data sources, job database, de-duplication, vector recall | Batches of jobs can be searched, filtered and ranked |
+| Phase 3: Agent & Tracking | 1–2 weeks | Tool orchestration, scheduled tasks, saved jobs and application tracking | Can produce a report of new jobs and record user feedback |
+| Phase 4: Cloud & CI/CD | About 1 week | Azure deployment, tests, GitHub Actions, monitoring | Automated tests and deployment pass; key requests are traceable |
 
-时间为单人开发的粗略估计，不含第三方平台授权等待。
+Durations are rough estimates for a single developer and do not include waiting for third-party platform authorisation.
 
-## 11. 测试与评估
+## 11. Testing and evaluation
 
-- **单元测试**：CV/JD 解析、字段验证、评分计算、去重与过滤。
-- **集成测试**：插件 → API → 数据库 → 模型的完整链路。
-- **端到端测试**：使用自建模拟招聘页面，避免依赖第三方网站结构稳定性。
-- **AI 评估集**：建立人工标注的 CV–JD 样本，评估推荐排序、理由准确性、虚构信息率。
-- **非功能指标**：分析延迟、失败率、Token 成本、任务成功率、数据删除验证。
+- **Unit tests**: CV/JD parsing, field validation, score calculation, de-duplication and filtering.
+- **Integration tests**: the full chain from extension → API → database → model.
+- **End-to-end tests**: use self-built mock job pages so tests don't depend on third-party sites keeping their structure.
+- **AI evaluation set**: build hand-labelled CV–JD samples to evaluate ranking, accuracy of the reasoning and the rate of invented information.
+- **Non-functional metrics**: analysis latency, failure rate, token cost, task success rate, verification of data deletion.
 
-## 12. 交付成果
+## 12. Deliverables
 
-- Chrome Extension 源码与可安装开发包。
-- FastAPI 服务及数据库迁移脚本。
-- 架构图、数据模型、API 文档和 README。
-- 测试用例、示例数据和评估报告。
-- GitHub Actions CI/CD 配置及 Azure 部署说明。
-- 产品 Demo：简历上传 → 当前职位分析 → 推荐解释 → 收藏/追踪。
+- Chrome extension source and an installable development build.
+- FastAPI service and database migration scripts.
+- Architecture diagram, data model, API documentation and README.
+- Test cases, sample data and an evaluation report.
+- GitHub Actions CI/CD configuration and Azure deployment instructions.
+- Product demo: resume upload → current-job analysis → explained recommendation → save/track.
 
-## 13. 建议的第一步
+## 13. Suggested first step
 
-先完成 **“单个招聘页面 + 一份 CV → AI 匹配报告”** 的闭环。暂不接入复杂的跨站自动搜索，先验证解析准确性、评分可解释性、插件与后端通信，再逐步扩展数据源和 Agent 功能。
+First complete the loop **"one job page + one CV → AI match report"**. Hold off on complex cross-site automated search; first validate parsing accuracy, the explainability of the scores and the communication between extension and backend, then expand data sources and agent features step by step.
