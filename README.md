@@ -1,5 +1,7 @@
 # JobPilot AI
 
+[![CI](https://github.com/TuringChicken/JobPilot/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TuringChicken/JobPilot/actions/workflows/ci.yml)
+
 A Chrome side panel and FastAPI backend that compare the job posting you're viewing with your resume. You get a match report that shows its evidence.
 
 You open a job posting, click **Analyze**, and in about 30 seconds you get:
