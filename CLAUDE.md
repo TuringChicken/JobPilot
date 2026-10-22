@@ -5,6 +5,7 @@
 - Python work happens in a per-machine `.venv` at the repo root; dependencies go in `requirements.txt` / `pyproject.toml`.
 - Secrets live in `.env` (gitignored); keep `.env.example` updated with variable names only.
 - `docs/`: `DEVLOG.md` (dev log, newest first), `KNOWN_ISSUES.md` (known issues and limits, P1–P3), `BACKEND.md` (backend internals). Committed; keep them updated with the code.
+- All docs (`README.md`, the outline, `docs/`) and code comments are written in English. The only exceptions are localised UI strings in `extension/src/i18n` and test data that checks localised output.
 - Never commit real resumes or personal data; use synthetic sample CVs for tests.
 - Current focus: Phase 1 MVP (single job page + CV → match report).
 - Python 3.13. Backend lives in `backend/app` (FastAPI app factory `app.main:create_app`); tests in `backend/tests`, run `pytest` from repo root.
